@@ -1,0 +1,14 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - macos/**
+
+linter:
+  rules:
+    # Ders projesindeki numaralı ekran dosyası düzenini korur.
+    file_names: false
