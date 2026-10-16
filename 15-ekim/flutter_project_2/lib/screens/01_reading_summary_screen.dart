@@ -21,6 +21,71 @@ class ReadingSummaryScreen extends StatefulWidget {
 
 class _ReadingSummaryScreenState extends State<ReadingSummaryScreen> {
   int _dailyGoal = 30;
+  int _dailyMinutesGoal = 20;
+
+  Future<void> _editGoals() async {
+    final formKey = GlobalKey<FormState>();
+    var pages = _dailyGoal;
+    var minutes = _dailyMinutesGoal;
+    final result = await showDialog<(int, int)>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Günlük hedefler'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final field in [
+                  (pages, 'Sayfa hedefi'),
+                  (minutes, 'Dakika hedefi'),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: TextFormField(
+                      initialValue: '${field.$1}',
+                      onSaved: (value) {
+                        if (field.$2 == 'Sayfa hedefi') {
+                          pages = int.parse(value!.trim());
+                        } else {
+                          minutes = int.parse(value!.trim());
+                        }
+                      },
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(labelText: field.$2),
+                      validator: (value) =>
+                          (int.tryParse(value?.trim() ?? '') ?? 0) <= 0
+                          ? 'Pozitif bir tam sayı girin.'
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              formKey.currentState!.save();
+              Navigator.pop(context, (pages, minutes));
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      _dailyGoal = result.$1;
+      _dailyMinutesGoal = result.$2;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +99,10 @@ class _ReadingSummaryScreenState extends State<ReadingSummaryScreen> {
     final todayPages = todaySessions.fold(
       0,
       (sum, session) => sum + session.pages,
+    );
+    final todayMinutes = todaySessions.fold(
+      0,
+      (sum, session) => sum + session.minutes,
     );
     final totalMinutes = widget.sessions.fold(
       0,
@@ -95,9 +164,22 @@ class _ReadingSummaryScreenState extends State<ReadingSummaryScreen> {
                   minHeight: 8,
                   borderRadius: BorderRadius.circular(8),
                 ),
+                const SizedBox(height: 16),
+                Text(
+                  '$todayMinutes / $_dailyMinutesGoal dakika',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: (todayMinutes / _dailyMinutesGoal).clamp(0.0, 1.0),
+                  color: const Color(0xFFEACB94),
+                  backgroundColor: Colors.white24,
+                  minHeight: 8,
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 const SizedBox(height: 12),
                 Text(
-                  todayPages >= _dailyGoal
+                  todayPages >= _dailyGoal && todayMinutes >= _dailyMinutesGoal
                       ? 'Tebrikler! Günlük hedefine ulaştın.'
                       : 'Küçük adımlar, büyük hikâyeler.',
                   style: const TextStyle(color: Colors.white),
@@ -116,10 +198,9 @@ class _ReadingSummaryScreenState extends State<ReadingSummaryScreen> {
                 label: const Text('Okuma Kaydı Ekle'),
               ),
               OutlinedButton.icon(
-                onPressed: () =>
-                    setState(() => _dailyGoal = _dailyGoal == 30 ? 50 : 30),
+                onPressed: _editGoals,
                 icon: const Icon(Icons.flag_outlined),
-                label: Text('Hedef: $_dailyGoal sayfa'),
+                label: const Text('Hedefleri düzenle'),
               ),
             ],
           ),
@@ -179,9 +260,11 @@ class _ReadingSummaryScreenState extends State<ReadingSummaryScreen> {
               ),
             ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Örnek kitaplık verileri kullanılır. Eklediğin kayıtlar yalnızca uygulama açıkken saklanır.',
-            style: TextStyle(color: Colors.black54),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
