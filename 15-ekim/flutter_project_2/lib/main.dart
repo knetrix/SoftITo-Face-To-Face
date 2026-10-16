@@ -44,6 +44,8 @@ class _ReadingHomeScreenState extends State<ReadingHomeScreen> {
 
   void _saveSession(ReadingSession session) {
     final index = _books.indexWhere((book) => book.id == session.bookId);
+    if (index == -1) return;
+
     setState(() {
       _books[index] = _books[index].withReadPages(
         _books[index].readPages + session.pages,

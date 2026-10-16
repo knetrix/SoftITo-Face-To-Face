@@ -187,7 +187,16 @@ class _ReadingLogScreenState extends State<ReadingLogScreen> {
                   children: [
                     Text(
                       widget.books
-                          .firstWhere((book) => book.id == session.bookId)
+                          .firstWhere(
+                            (book) => book.id == session.bookId,
+                            orElse: () => const Book(
+                              id: '',
+                              title: 'Bilinmeyen kitap',
+                              author: '',
+                              category: '',
+                              totalPages: 1,
+                            ),
+                          )
                           .title,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
