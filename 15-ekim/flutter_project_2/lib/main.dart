@@ -8,8 +8,15 @@ import 'screens/03_reading_log_screen.dart';
 
 void main() => runApp(const BookRouteApp());
 
-class BookRouteApp extends StatelessWidget {
+class BookRouteApp extends StatefulWidget {
   const BookRouteApp({super.key});
+
+  @override
+  State<BookRouteApp> createState() => _BookRouteAppState();
+}
+
+class _BookRouteAppState extends State<BookRouteApp> {
+  ThemeMode _themeMode = ThemeMode.system;
 
   @override
   Widget build(BuildContext context) {
@@ -24,13 +31,30 @@ class BookRouteApp extends StatelessWidget {
           border: OutlineInputBorder(),
         ),
       ),
-      home: const ReadingHomeScreen(),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF356859),
+          brightness: Brightness.dark,
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          border: OutlineInputBorder(),
+        ),
+      ),
+      themeMode: _themeMode,
+      home: ReadingHomeScreen(
+        onThemeToggle: (isDark) => setState(() {
+          _themeMode = isDark ? ThemeMode.light : ThemeMode.dark;
+        }),
+      ),
     );
   }
 }
 
 class ReadingHomeScreen extends StatefulWidget {
-  const ReadingHomeScreen({super.key});
+  const ReadingHomeScreen({super.key, required this.onThemeToggle});
+
+  final ValueChanged<bool> onThemeToggle;
 
   @override
   State<ReadingHomeScreen> createState() => _ReadingHomeScreenState();
@@ -68,6 +92,19 @@ class _ReadingHomeScreenState extends State<ReadingHomeScreen> {
         centerTitle: true,
         leading: const Icon(Icons.auto_stories_outlined),
         actions: [
+          IconButton(
+            tooltip: Theme.of(context).brightness == Brightness.dark
+                ? 'Açık temaya geç'
+                : 'Koyu temaya geç',
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
+            ),
+            onPressed: () => widget.onThemeToggle(
+              Theme.of(context).brightness == Brightness.dark,
+            ),
+          ),
           IconButton(
             tooltip: _hasUnreadNotification
                 ? 'Bildirimler: 1 okunmamış bildirim'
@@ -111,7 +148,10 @@ class _ReadingHomeScreenState extends State<ReadingHomeScreen> {
                   sessions: _sessions,
                   onStartReading: () => setState(() => _selectedIndex = 2),
                 ),
-                LibraryScreen(books: _books),
+                LibraryScreen(
+                  books: _books,
+                  onAddBook: (book) => setState(() => _books.add(book)),
+                ),
                 ReadingLogScreen(
                   books: _books,
                   sessions: _sessions,
