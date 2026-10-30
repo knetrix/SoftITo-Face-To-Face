@@ -1,17 +1,27 @@
+// Ürünleri Oluşturmak İçin Gereken Modeller.
 import '../models/kategori.dart';
 import '../models/urun.dart';
+// Uygulanacak Sözleşme (Interface).
 import 'i_urun_servisi.dart';
 
+// "Mock" = Taklit. Henüz Gerçek Bir Sunucu (Backend) Olmadığı İçin
+// Veriler Kodun İçine Gömülmüştür ve Ağ Gecikmesi Taklit Edilir.
+// implements: Sözleşmedeki TÜM Metotları Yazmak Zorundayız.
 class MockUrunServisi implements IUrunServisi {
+  // "_" ile Başlayan İsimler Bu Dosyaya Özeldir (Private).
+  // const Liste Olduğu İçin İçindeki Urun Nesneleri De const'tur ve Liste Değiştirilemez.
+  // Toplam 8 Ürün Var: Her Kategoriden 2 Tane.
   final List<Urun> _urunDeposu = const [
     Urun(
       id: 1,
       baslik: "Macbook M5 Pro Laptop",
       aciklama: "Apple'ın en güçlü işlemcisine sahip yeni nesil Macbook Pro",
       fiyat: 179999.99,
+      // picsum.photos: Rastgele Test Resmi Veren Bir Site. Sondaki "?1" Her Ürüne Farklı Resim Sağlar.
       resimUrl: "https://picsum.photos/400/400?1",
       kategori: Kategori.elektronik,
       stokAdedi: 5,
+      // favoriMi Verilmedi → Varsayılan Olarak false.
     ),
     Urun(
       id: 2,
@@ -78,31 +88,43 @@ class MockUrunServisi implements IUrunServisi {
     ),
   ];
 
+  // Sözleşmedeki Metodu Uyguluyoruz.
+  // async: Metot İçinde await Kullanılabilir ve Sonuç Future Olarak Döner.
   @override
   Future<List<Urun>> tumUrunleriGetir() async {
+    // 1,5 Saniye Bekle → Gerçek Bir Ağ İsteğinin Gecikmesini Taklit Eder.
     await Future.delayed(const Duration(milliseconds: 1500));
+    // Listenin KOPYASI Döndürülür. const Liste Değiştirilemez; Ekran İse Favori
+    // Güncellerken Listede Değişiklik Yapıyor. Kopya Değiştirilebilir Olduğu İçin Hata Çıkmaz.
     return List.from(_urunDeposu);
   }
 
+  // Not: Bu Metot Şu An Hiçbir Yerde Çağrılmıyor; Ekran Filtrelemeyi Kendisi Yapıyor.
   @override
   Future<List<Urun>> kategoriyeGoreGetir(Kategori kategori) async {
     await Future.delayed(const Duration(milliseconds: 400));
+    // "Tümü" Seçildiyse Filtreleme Yapmadan Hepsini Döndür.
     if (kategori == Kategori.hepsi) {
       return List.from(_urunDeposu);
     }
+    // where: Koşulu Sağlayanları Süzer. toList: Sonucu Gerçek Bir Listeye Çevirir.
     return _urunDeposu.where((urun) => urun.kategori == kategori).toList();
   }
 
+  // Not: Bu Metot Da Şu An Hiçbir Yerde Çağrılmıyor.
   @override
   Future<List<Urun>> adaGoreAra(String aramaMetni) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    // trim: Baştaki ve Sondaki Boşlukları Siler. Arama Boşsa Hepsini Döndür.
     if (aramaMetni.trim().isEmpty) {
       return List.from(_urunDeposu);
     }
 
     return _urunDeposu.where((urun) {
+      // Büyük/Küçük Harf Duyarsız Karşılaştırma İçin İki Metin De Küçültülür.
       final baslikKucuk = urun.baslik.toLowerCase();
       final arananKucuk = aramaMetni.toLowerCase();
+      // Başlıkta Aranan Metin Geçiyor Mu?
       return baslikKucuk.contains(arananKucuk);
     }).toList();
   }
