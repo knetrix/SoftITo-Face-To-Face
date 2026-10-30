@@ -1,243 +1,449 @@
+// ============================================================================
+// urun_listesi_ekrani.dart → Ana Ekran (Uygulamanın Beyni)
+// ----------------------------------------------------------------------------
+// Bu Ekranın Görevleri:
+//   1) Açılınca Servislerden Ürünleri Çekmek (Mock + API).
+//   2) Kategori Ya da Arama Değişince, Uygun Ürünleri Servislerden Yeniden İstemek.
+//   3) Favori Bilgisini Tutmak ve Güncellemek.
+//   4) Bunların Hepsini Ekrana Çizmek.
+//
+// Ekranın Görünüşü (Yukarıdan Aşağı):
+//   ┌─────────────────────────────┐
+//   │      Mini Mağaza        ♥ 2 │  ← AppBar (Üst Bar) + Favori Sayacı
+//   │ [🔍 Ürün veya marka ara...] │  ← Arama Kutusu
+//   │ (Tümü)(Elektronik)(Giyim)…  │  ← Kategori Çipleri
+//   │ ┌─────────────────────────┐ │
+//   │ │ Ürün Kartı              │ │  ← Ürün Listesi
+//   │ └─────────────────────────┘ │
+//   └─────────────────────────────┘
+// ============================================================================
+
+// dart:async İçindeki Timer (Zamanlayıcı), Aramada "Yazma Bitince İstek At"
+// Davranışı için Kullanılıyor.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/kategori.dart';
 import '../models/urun.dart';
 import '../services/i_urun_servisi.dart';
+import '../services/api_urun_servisi.dart';
 import '../services/mock_urun_servisi.dart';
 import '../widgets/urun_karti.dart';
 
-// Uygulamanın Ana Ekranı. Durumu (State) Yönetir ve Parçaları Bir Araya Getirir.
-// StatefulWidget: Zamanla DEĞİŞEN Bir Durumu Var (Liste, Filtre, Yükleniyor Bilgisi).
-// İki Sınıftan Oluşur: Widget'ın Kendisi Sabittir, Değişen Veriler State Sınıfında Tutulur.
+// StatefulWidget: Zamanla DEĞİŞEN Bilgileri Olan Widget.
+// Bu Ekranda Değişen Bilgiler: Ürün Listesi, Seçili Kategori, Yükleniyor Durumu...
+//
+// StatefulWidget İki Sınıftan Oluşur:
+//   1) UrunListesiEkrani        → Widget'ın Kendisi. Sabittir, Değişmez.
+//   2) _UrunListesiEkraniState  → Değişen Bilgileri (State = Durum) Tutar.
+// Neden İkiye Ayrılmış? Flutter Ekranı Yeniden Çizerken Widget'ı Baştan
+// Oluşturabilir; Ama State Nesnesi Korunur, Böylece Bilgiler Kaybolmaz.
 class UrunListesiEkrani extends StatefulWidget {
   const UrunListesiEkrani({super.key});
 
-  // Durumu Tutacak Sınıfı Üretir. "=>" Tek Satırlık { return ...; } Yazmanın Kısa Yolu.
+  // createState: Bu Widget'ın Durumunu Tutacak Nesneyi Oluşturur.
+  // "=>" Tek Satırlık Fonksiyonların Kısa Yazımı: { return ...; } ile Aynı.
   @override
   State<UrunListesiEkrani> createState() => _UrunListesiEkraniState();
 }
 
+// Sınıf İsminin Başındaki "_": Bu Sınıf Sadece Bu Dosyada Kullanılabilir (Private).
 class _UrunListesiEkraniState extends State<UrunListesiEkrani> {
-  // Tip Olarak Interface, Nesne Olarak Mock Kullanılıyor.
-  // Gerçek API Gelince Sadece Eşittirin Sağ Tarafı Değiştirilir.
-  final IUrunServisi _servis = MockUrunServisi();
+  // --------------------------------------------------------------------------
+  // DURUM DEĞİŞKENLERİ (Ekranın Hafızası)
+  // --------------------------------------------------------------------------
 
-  // Arama Kutusundaki Metni Okumak ve Temizlemek İçin Kullanılan "Kumanda".
+  // Ürünlerin Çekileceği Servislerin Listesi.
+  // Liste Tipi "IUrunServisi" (Sözleşme) Olduğu için, Bu Sözleşmeye Uyan
+  // Her Servis Bu Listeye Konabilir. İki Farklı Servis Burada Yan Yana Duruyor.
+  // Yeni Bir Veri Kaynağı Eklemek İsterseniz Listeye Eklemeniz Yeterli.
+  final List<IUrunServisi> _servisler = [MockUrunServisi(), ApiUrunServisi()];
+
+  // TextEditingController: Arama Kutusunun "Kumandası".
+  // Kutudaki Metni Okumak (.text) ve Temizlemek (.clear()) için Kullanılır.
   final TextEditingController _aramaController = TextEditingController();
 
-  // Ekran Başta "Yükleniyor" Durumunda Açılır.
+  // Ürünler Yükleniyor Mu? Ekran İlk Açıldığında true; Yükleme Bitince false.
+  // true Olduğu Sürece Ekranda Dönen Bir Yükleniyor Çemberi Görünür.
   bool _yukleniyorMu = true;
-  // Lint Uyarısını Susturur (Aslında Gereksiz, Çünkü Değişken Sonradan Değiştiriliyor).
+
+  // Şu An Seçili Olan Kategori. Başta "Tümü" (Kategori.hepsi).
+  // Aşağıdaki Satır Bir Uyarıyı Susturuyor (Aslında Gereksiz, Çünkü Bu
+  // Değişken Sonradan Değiştiriliyor ve final Olamaz).
   // ignore: prefer_final_fields
   Kategori _seciliKategori = Kategori.hepsi;
-  // EKRANDA GÖSTERİLEN, Filtrelenmiş Liste.
-  List<Urun> _filtrelenmisUrunler = [];
-  // Servisten Gelen ORİJİNAL Tam Liste. Hiç Küçülmez.
-  // İki Ayrı Liste Olmasaydı, Filtreden Sonra Kaybolan Ürünler Geri Gelmezdi.
-  List<Urun> _tumUrunler = [];
 
-  // Ekran İLK Oluşturulduğunda BİR KEZ Çalışır.
+  // EKRANDA GÖSTERİLEN Liste. Servislerden, Seçili Kategoriye ve Arama
+  // Metnine Göre Süzülmüş Olarak Gelir. Ekran Bu Listeyi Ayrıca Süzmez.
+  List<Urun> _filtrelenmisUrunler = [];
+
+  // Favori Ürünlerin id'leri. Set: Aynı Değeri İki Kez Tutmayan Liste.
+  // Neden Ayrı Tutuluyor? Her Kategori Seçiminde ve Her Aramada Ürünler
+  // Servisten Yeniden Çekiliyor ve Yeni Gelen Ürünlerin favoriMi Değeri Hep false.
+  // Favoriler Ürünlerin Üstünde Tutulsaydı Her Yüklemede Kaybolurdu.
+  // Burada Tutulunca Hangi Ürünlerin Favori Olduğu Hiç Unutulmaz.
+  final Set<int> _favoriIdleri = {};
+
+  // Arama için Zamanlayıcı (Debounce).
+  // Kullanıcı "saat" Yazarken Her Harfte Servise Gidilseydi 4 Ayrı İstek
+  // Atılırdı. Bunun Yerine Her Harfte Zamanlayıcı Sıfırlanıyor; Kullanıcı
+  // 400 Milisaniye Boyunca Yeni Harf Yazmazsa Tek Bir İstek Atılıyor.
+  // "Timer?": Henüz Bir Zamanlayıcı Kurulmamış Olabilir (null).
+  Timer? _aramaZamanlayici;
+
+  // Her Yükleme Başladığında Bir Artan Sayaç.
+  // Aynı Anda Birden Fazla Yükleme Sürebilir (Örn: Kullanıcı Hızlıca Çip
+  // Değiştirir Ya da Yazmaya Devam Eder). Cevap Geldiğinde Sayaç Değişmişse
+  // Arkadan Yeni Bir Yükleme Başlamış Demektir; Eski Cevap Ekrana Yazılmaz.
+  int _istekNo = 0;
+
+  // --------------------------------------------------------------------------
+  // YAŞAM DÖNGÜSÜ (Lifecycle) METOTLARI
+  // --------------------------------------------------------------------------
+
+  // initState: Ekran İLK Oluşturulduğunda Sadece BİR KEZ Çalışır.
+  // Başlangıçta Yapılacak İşler (Veri Çekmek Gibi) Buraya Yazılır.
   @override
   void initState() {
-    // Önce Flutter'ın Kendi Hazırlığını Yapmasına İzin Ver.
+    // Önce Flutter'ın Kendi Hazırlığını Yapması için Üst Sınıfın initState'i
+    // Çağrılır. Bu Satır Her Zaman En Başta Olmalı.
     super.initState();
     // Sonra Ürünleri Çekmeye Başla.
     _urunleriYukle();
   }
 
-  // Ekran Kapatılıp Yok Edilirken Çalışır.
+  // dispose: Ekran Kapatılıp Yok Edilirken Çalışır.
+  // Kullanılan Kaynakları Serbest Bırakmak (Temizlik) için Kullanılır.
   @override
   void dispose() {
-    // Controller'ın Kullandığı Belleği Serbest Bırak. Unutulursa Bellek Sızıntısı Olur.
+    // Controller Bellekte Yer Tutar. Ekran Kapanınca Onu da Kapatıyoruz.
+    // Unutulursa "Bellek Sızıntısı" (Memory Leak) Olur: Kullanılmayan
+    // Nesneler Bellekte Kalmaya Devam Eder.
     _aramaController.dispose();
+    // Bekleyen Bir Arama Zamanlayıcısı Varsa İptal Et. "?.": Zamanlayıcı
+    // Hiç Kurulmadıysa (null) Hiçbir Şey Yapma.
+    _aramaZamanlayici?.cancel();
+    // Temizlik Bitince Üst Sınıfın dispose'u En Sonda Çağrılır.
     super.dispose();
   }
 
-  // Servisten Ürünleri Çeker ve Ekranı Günceller.
+  // --------------------------------------------------------------------------
+  // VERİ YÜKLEME
+  // --------------------------------------------------------------------------
+
+  // Seçili Kategoriye ve Arama Metnine Uyan Ürünleri Tüm Servislerden Çeker,
+  // Birleştirir ve Ekranı Günceller.
+  // Ekran Açılınca, Her Kategori Seçiminde ve Arama Metni Değişince Çağrılır.
+  // "Future<void>": İleride Biten Ama Geriye Bir Değer Döndürmeyen İşlem.
+  // "async": İçinde await Kullanılabilir.
   Future<void> _urunleriYukle() async {
-    // setState: "Durum Değişti, Ekranı Yeniden Çiz!" Demektir.
-    // Değişken setState İçinde Değiştirilmezse Ekran Güncellenmez.
+    // Bu Yüklemenin Numarasını Al. "++_istekNo": Önce Sayacı 1 Artır,
+    // Sonra Yeni Değeri Kullan. Aşağıda Cevap Gelince Bu Numarayı Kontrol Edeceğiz.
+    final buIstek = ++_istekNo;
+    // İstek Başlarken Hangi Kategori ve Hangi Arama Metni İstendiğini Not Al.
+    final istenenKategori = _seciliKategori;
+    // Arama Kutusundaki Metni Al:
+    //   .text        → Kutudaki Yazı
+    //   .trim()      → Baştaki/Sondaki Boşlukları Sil
+    //   .toLowerCase → Tüm Harfleri Küçült (Büyük/Küçük Harf Fark Etmesin)
+    final aranan = _aramaController.text.trim().toLowerCase();
+
+    // setState: Flutter'a "Durum Değişti, Ekranı Yeniden Çiz!" Der.
+    // ÖNEMLİ: Bir Değişkeni setState Dışında Değiştirirseniz Değişken
+    // Değişir Ama Ekran GÜNCELLENMEZ. Ekranı Etkileyen Değişiklikler
+    // Mutlaka setState İçinde Yapılmalı.
     setState(() {
       _yukleniyorMu = true;
     });
 
-    // Servisten Cevap Gelene Kadar (1,5 Sn) Burada Beklenir.
-    final urunler = await _servis.tumUrunleriGetir();
-
-    // Bekleme Sırasında Kullanıcı Ekrandan Çıktıysa setState Hata Verir.
-    // mounted: Ekran Hâlâ Görünüyor Mu Kontrolü.
-    if (mounted) {
-      setState(() {
-        _tumUrunler = urunler;
-        // Başta Filtre Yok, Bu Yüzden İki Liste Aynı.
-        _filtrelenmisUrunler = urunler;
-        // Yükleme Bitti.
-        _yukleniyorMu = false;
-      });
+    // Tüm Servislerden Gelen Ürünler Bu Listede Toplanacak.
+    List<Urun> urunler = [];
+    // for-in Döngüsü: _servisler Listesindeki Her Servis için Sırayla Çalışır.
+    // İlk Turda servis = MockUrunServisi, İkinci Turda servis = ApiUrunServisi.
+    for (final servis in _servisler) {
+      // try/catch: Hata Çıkabilecek Kodu "try" İçine Yazarız. Hata Çıkarsa
+      // Program Çökmez, "catch" Bloğu Çalışır.
+      // Her Servis için Ayrı try/catch Var: İnternet Yoksa API Hata Verir,
+      // Ama Mock Ürünler Yine de Listelenir.
+      try {
+        // await: Servis Cevap Verene Kadar Bekle.
+        // addAll: Gelen Listenin Tüm Elemanlarını urunler Listesinin Sonuna Ekle.
+        if (aranan.isEmpty) {
+          // Arama Yoksa: kategoriyeGoreGetir ile Sadece İstenen Kategorinin
+          // Ürünlerini İste. "Tümü" Seçiliyse Servisler Bütün Ürünleri Döndürür.
+          urunler.addAll(await servis.kategoriyeGoreGetir(istenenKategori));
+        } else {
+          // Arama Varsa: adaGoreAra ile Aranan Metni İçeren Ürünleri İste.
+          // adaGoreAra Kategoriye Bakmaz; Bütün Kategorilerden Sonuç Döndürür.
+          final bulunanlar = await servis.adaGoreAra(aranan);
+          // Bu Yüzden Sonuçlardan Sadece Seçili Kategoriye Ait Olanları Al.
+          // "Tümü" Seçiliyse Hepsi Kalır.
+          urunler.addAll(
+            bulunanlar.where(
+              (u) =>
+                  istenenKategori == Kategori.hepsi ||
+                  u.kategori == istenenKategori,
+            ),
+          );
+        }
+      } catch (e) {
+        // e: Yakalanan Hata Nesnesi.
+        // debugPrint: Hatayı Geliştiricinin Görebileceği Konsola (Terminal /
+        // Debug Console) Yazar; Kullanıcı Bunu Görmez. Kullanıcıya Gösterilen
+        // Mesaj Genel Olduğu için Asıl Sebebi (Örn: "Ürünler Alınamadı: 500",
+        // TimeoutException) Burada Görürüz. runtimeType: Hatanın Hangi
+        // Servisten Geldiğini Yazar (Örn: ApiUrunServisi).
+        debugPrint('${servis.runtimeType} Hatası: $e');
+        // mounted: Bu Ekran Hâlâ Görünüyor Mu? Beklerken Kullanıcı Ekrandan
+        // Çıkmış Olabilir; O Zaman Mesaj Göstermeye Çalışmak Hata Verir.
+        if (mounted) {
+          // ScaffoldMessenger: Ekranın Altından Kısa Mesaj (SnackBar)
+          // Göstermeyi Sağlar. Birkaç Saniye Sonra Kendiliğinden Kaybolur.
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Bazı ürünler yüklenemedi. İnternet bağlantınızı kontrol edin.',
+              ),
+            ),
+          );
+        }
+      }
     }
-  }
 
-  // Kategori ve Arama Filtrelerini BİRLİKTE Uygular.
-  // (İsimde Yazım Hatası Var: "_filtreyiUygula" Olmalı.)
-  void _filteyiUygula() {
-    // Kutudaki Metni Al, Baştaki/Sondaki Boşlukları Sil, Küçük Harfe Çevir.
-    final aranan = _aramaController.text.trim().toLowerCase();
+    // Tüm Servisler Bitti. Sonuçları Ekrana Yansıtmadan Önce İki Kontrol:
+    //   - !mounted: Ekran Kapandıysa Hiçbir Şey Yapma.
+    //   - İstek Numarası Değiştiyse: Kullanıcı Beklerken Başka Bir Çipe Basmış
+    //     Ya da Yazmaya Devam Etmiş; Arkadan Yeni Bir Yükleme Başlamış.
+    //     Bu Cevap Artık Eski; Ekrana Yazarsak Yanlış Ürünler Görünür.
+    if (!mounted || buIstek != _istekNo) return;
 
     setState(() {
-      // HER ZAMAN Tam Listeden Süzülür, Böylece Kaybolan Ürün Olmaz.
-      _filtrelenmisUrunler = _tumUrunler.where((urun) {
-        // "Tümü" Seçiliyse Her Ürün Uygun; Değilse Kategorisi Eşleşmeli.
-        final kategoriUygunMu =
-            (_seciliKategori == Kategori.hepsi) ||
-            (urun.kategori == _seciliKategori);
-        // Arama Boşsa Her Ürün Uygun; Değilse Başlıkta Ya Da Açıklamada Geçmeli.
-        final aramaUygunMu =
-            aranan.isEmpty ||
-            urun.baslik.toLowerCase().contains(aranan) ||
-            urun.aciklama.toLowerCase().contains(aranan);
-        // İki Koşul Birden Sağlanmalı.
-        return kategoriUygunMu && aramaUygunMu;
-      }).toList();
+      // Servisten Gelen Ürünlerin favoriMi Değeri Hep false. Favori id'leri
+      // Kümesine Bakarak Her Ürünün Favori Bilgisini Geri Yükle.
+      // map: Her Ürünü Favori Bilgisi Düzeltilmiş Kopyasıyla Değiştirir.
+      _filtrelenmisUrunler = urunler
+          .map((u) => u.copyWith(favoriMi: _favoriIdleri.contains(u.id)))
+          .toList();
+      // Yükleme Bitti → Yükleniyor Çemberi Kaybolur, Liste Görünür.
+      _yukleniyorMu = false;
     });
   }
 
-  // Bir Ürünün Favori Durumunu Tersine Çevirir.
+  // --------------------------------------------------------------------------
+  // ARAMA
+  // --------------------------------------------------------------------------
+
+  // Arama Kutusuna Her Harf Yazıldığında Çağrılır.
+  void _aramaDegisti() {
+    // Boş Bir setState: Hiçbir Değişkeni Değiştirmiyor, Sadece Ekranı Yeniden
+    // Çizdiriyor. Kutuya Yazı Yazılınca Sağdaki "X" Butonu Hemen Görünsün Diye.
+    setState(() {});
+    // Önceki Harfte Kurulmuş Bir Zamanlayıcı Varsa İptal Et; Henüz Servise Gitme.
+    _aramaZamanlayici?.cancel();
+    // Yeni Bir Zamanlayıcı Kur: 400 Milisaniye İçinde Yeni Harf Gelmezse
+    // _urunleriYukle Çalışır ve Servislerden Arama Sonuçları İstenir.
+    _aramaZamanlayici = Timer(
+      const Duration(milliseconds: 400),
+      _urunleriYukle,
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // FAVORİ DEĞİŞTİRME
+  // --------------------------------------------------------------------------
+
+  // Kalbe Basılınca Çağrılır: Ürün Favoriyse Favoriden Çıkarır, Değilse Ekler.
   void _favoriyiDegistir(Urun hedefUrun) {
     setState(() {
-      // "!" = Tersini Al. Ürün final Olduğu İçin copyWith ile Yeni Kopya Üretilir.
+      // "!" Bir bool Değerin Tersini Alır: !true → false, !false → true.
+      // Ürünün Alanları final Olduğu için Doğrudan Değiştiremiyoruz;
+      // copyWith ile Favori Durumu Tersine Çevrilmiş YENİ Bir Kopya Üretiyoruz.
       final yeniUrun = hedefUrun.copyWith(favoriMi: !hedefUrun.favoriMi);
-      // Ürünün Ana Listede Kaçıncı Sırada Olduğunu id'ye Göre Bul.
-      final index = _tumUrunler.indexWhere((u) => u.id == hedefUrun.id);
-      // -1 = Bulunamadı Demektir.
-      if (index != -1) {
-        // Eski Nesneyi Yenisiyle Değiştir. Değişiklik ANA Listeye Yazıldığı İçin
-        // Filtre Değişse Bile Favori Durumu Korunur.
-        _tumUrunler[index] = yeniUrun;
+      // Favori Kümesini Güncelle: Favori Olduysa id'yi Ekle, Değilse Çıkar.
+      // Kategori Değişip Ürünler Yeniden Çekildiğinde Bu Küme Kullanılıyor.
+      if (yeniUrun.favoriMi) {
+        _favoriIdleri.add(hedefUrun.id);
+      } else {
+        _favoriIdleri.remove(hedefUrun.id);
       }
-      // Filtreli Listeyi Ana Listeden Yeniden Üret.
-      _filteyiUygula();
+      // indexWhere: Koşulu Sağlayan İlk Elemanın Sırasını (Index) Döndürür.
+      // Listede Sıra Numaraları 0'dan Başlar. id'si Aynı Olan Ürünü Arıyoruz.
+      final index = _filtrelenmisUrunler.indexWhere(
+        (u) => u.id == hedefUrun.id,
+      );
+      // Bulunamazsa indexWhere -1 Döndürür. -1 Değilse Ürün Bulunmuş Demektir.
+      if (index != -1) {
+        // O Sıradaki Eski Ürünü Yenisiyle Değiştir; Kalp Hemen Kırmızı Olsun.
+        _filtrelenmisUrunler[index] = yeniUrun;
+      }
     });
   }
 
-  // setState Her Çağrıldığında Bu Metot Tekrar Çalışır ve Ekran Yeniden Çizilir.
+  // --------------------------------------------------------------------------
+  // EKRANIN ÇİZİMİ
+  // --------------------------------------------------------------------------
+
+  // build: Ekranın Neye Benzeyeceğini Döndürür.
+  // setState Her Çağrıldığında Flutter Bu Metodu Tekrar Çalıştırır ve Ekranı
+  // Güncel Değişkenlerle Yeniden Çizer.
   @override
   Widget build(BuildContext context) {
-    // Scaffold: Sayfa İskeleti (Üst Bar + Gövde).
+    // Scaffold: Bir Sayfanın Hazır İskeleti. Üst Bar (appBar), Gövde (body)
+    // Gibi Standart Bölümleri Vardır.
     return Scaffold(
+      // AppBar: Sayfanın En Üstündeki Başlık Çubuğu.
       appBar: AppBar(
         title: const Text(
           "Mini Mağaza",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        // Başlığı Ortala.
+        // Başlığı Ortala (Bazı Platformlarda Varsayılan Olarak Solda Durur).
         centerTitle: true,
-        // AppBar'ın Sağ Tarafındaki Öğeler.
+        // actions: AppBar'ın Sağ Tarafına Konan Widget'lar.
         actions: [
           Padding(
+            // Sadece Sağ Tarafa 16 Piksel Boşluk.
             padding: const EdgeInsets.only(right: 16.0),
             child: Center(
-              // Badge: İkonun Köşesinde Küçük Sayı Rozeti.
+              // Badge: Bir İkonun Köşesine Küçük Bir Sayı Rozeti Ekler
+              // (Bildirim Sayısı Gibi).
               child: Badge(
-                // Favori Olan Ürünleri Say. _tumUrunler Üzerinden Sayıldığı İçin
-                // Filtre Uygulanmış Olsa Da TOPLAM Favori Sayısını Gösterir.
+                // Rozetteki Sayı: Favori Olan Ürünlerin Adedi.
+                // Favori Kümesindeki id Sayısı (.length) Kullanıldığı için
+                // Başka Bir Kategori Seçili Olsa Bile TOPLAM Favori Sayısını Gösterir.
                 label: Text(
-                  '${_tumUrunler.where((u) => u.favoriMi).length}',
+                  '${_favoriIdleri.length}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
+                // Rozetin Takıldığı İkon: Kırmızı Kalp.
                 child: const Icon(Icons.favorite, color: Colors.red),
               ),
             ),
           ),
         ],
       ),
-      // Gövde: Alt Alta 3 Parça (Arama Kutusu, Kategori Çipleri, Ürün Listesi).
+      // body: Sayfanın Ana İçeriği. Column ile Alt Alta 3 Parça Diziliyor.
       body: Column(
         children: [
-          // ── 1) ARAMA KUTUSU ──
+          // ── 1) ARAMA KUTUSU ────────────────────────────────────────────────
           Padding(
-            // Sırasıyla Sol, Üst, Sağ, Alt Boşluk.
+            // fromLTRB: Sırasıyla Sol (Left), Üst (Top), Sağ (Right), Alt (Bottom) Boşluk.
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            // TextField: Kullanıcının Yazı Yazabildiği Kutu.
             child: TextField(
-              // Kutuyu Controller'a Bağla.
+              // Kutuyu Kumandaya (Controller) Bağla.
               controller: _aramaController,
-              // Her Tuş Vuruşunda Filtrele. "_" = Gelen Parametreyi Kullanmıyorum.
-              onChanged: (_) => _filteyiUygula(),
+              // onChanged: Kutudaki Yazı Her Değiştiğinde (Her Tuş Vuruşunda) Çalışır.
+              // Gelen Parametre Yeni Metindir; Ama Biz Metni Controller'dan
+              // Okuduğumuz için Kullanmıyoruz. Kullanılmayan Parametreye "_" Denir.
+              // Her Harfte Doğrudan Servise Gitmiyoruz; _aramaDegisti Zamanlayıcıyı
+              // Kurar, Yazma Bitince Tek Bir İstek Atılır.
+              onChanged: (_) => _aramaDegisti(),
+              // decoration: Kutunun Görünüşü.
               decoration: InputDecoration(
-                // Kutu Boşken Görünen Silik Yazı.
+                // Kutu Boşken İçinde Görünen Silik İpucu Yazısı.
                 hintText: "Ürün veya marka ara...",
-                // Soldaki Büyüteç İkonu.
+                // Kutunun Solundaki İkon (Büyüteç).
                 prefixIcon: const Icon(Icons.search),
-                // Kutuda Yazı VARSA Sağda "X" Butonu Göster, Yoksa Hiçbir Şey Gösterme.
+                // Kutunun Sağındaki İkon: Kutuda Yazı VARSA Bir "X" Butonu
+                // Göster, Yoksa Hiçbir Şey Gösterme (null).
+                // isNotEmpty: Metin Boş Değil Mi?
                 suffixIcon: _aramaController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
+                        // "X"e Basılınca:
                         onPressed: () {
-                          // Metni Sil ve Listeyi Yenile.
+                          // Kutudaki Yazıyı Sil,
                           _aramaController.clear();
-                          _filteyiUygula();
+                          // Bekleyen Bir Arama Zamanlayıcısı Varsa İptal Et,
+                          _aramaZamanlayici?.cancel();
+                          // Seçili Kategorinin Ürünlerini Aramasız Olarak Yeniden Çek.
+                          _urunleriYukle();
                         },
                       )
                     : null,
-                // Açık Gri Arka Plan.
+                // Kutunun İçini Renkle Doldur.
                 filled: true,
+                // Doldurma Rengi: Çok Açık Gri.
                 fillColor: Colors.grey.shade100,
+                // Kutunun Kenarı: 12 Piksel Yuvarlak Köşe, Kenar Çizgisi Yok.
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  // Kenar Çizgisi Yok.
                   borderSide: BorderSide.none,
                 ),
+                // İç Boşluk: Dikeyde 0 (Kutu Daha İnce Görünür).
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
             ),
           ),
-          // ── 2) KATEGORİ ÇİPLERİ ──
-          // Çipler Ekrana Sığmazsa Yatay Olarak Kaydırılabilsin.
+
+          // ── 2) KATEGORİ ÇİPLERİ ────────────────────────────────────────────
+          // SingleChildScrollView: İçindeki Widget Ekrana Sığmazsa Kaydırılabilir Yapar.
           SingleChildScrollView(
+            // Yatay (Sağa-Sola) Kaydırma.
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
-              // Enum'daki HER Değer İçin Bir Çip Üret. Enum'a Yeni Kategori
-              // Eklenince Yeni Çip Otomatik Olarak Ekranda Belirir.
+              // Kategori.values: Enum'daki Tüm Değerlerin Listesi
+              // (hepsi, elektronik, giyim, ayakkabi, aksesuar).
+              // map: Her Kategori için Bir Çip Widget'ı Üretir.
+              // Enum'a Yeni Kategori Eklenirse Yeni Çip de Otomatik Olarak Ekrana Gelir.
               children: Kategori.values.map((kategori) {
+                // Bu Çip Şu An Seçili Olan Kategori Mi?
                 final seciliMi = _seciliKategori == kategori;
                 return Padding(
+                  // Çipler Arasında Sağdan Soldan 4'er Piksel Boşluk.
                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  // ChoiceChip: Seçilebilir, Hap Şeklinde Buton.
+                  // ChoiceChip: Seçilebilir, Hap Şeklinde Küçük Buton.
                   child: ChoiceChip(
-                    // Soldaki Küçük "E", "G" Vb. Metin.
+                    // Çipin Solundaki Küçük Metin ("E", "G"...).
                     avatar: Text(kategori.ikon),
+                    // Çipin Yazısı ("Elektronik", "Giyim"...).
                     label: Text(kategori.baslik),
-                    // Seçili Olan Çip Farklı Renkte Görünür.
+                    // true İse Çip Seçili (Renkli) Görünür.
                     selected: seciliMi,
+                    // Çipe Basılınca Çalışır. secildi: Çip Seçildi Mi (true),
+                    // Yoksa Seçim Kaldırıldı Mı (false)?
                     onSelected: (secildi) {
-                      // Sadece Seçme Olayını Dinle (Seçimi Kaldırmayı Değil).
+                      // Sadece Seçme Durumunu Dikkate Al. Seçili Çipe Tekrar
+                      // Basılınca Hiçbir Şey Yapma (Bir Kategori Hep Seçili Kalsın).
                       if (secildi) {
+                        // Seçili Kategoriyi Güncelle (Çip Hemen Renklensin),
                         setState(() {
                           _seciliKategori = kategori;
-                          _filteyiUygula();
                         });
+                        // Sonra Bu Kategorinin Ürünlerini Servislerden Çek.
+                        _urunleriYukle();
                       }
                     },
                   ),
                 );
-                // map'in Sonucunu Widget Listesine Çevir.
+                // map'in Sonucunu Row'un İstediği Widget Listesine Çevir.
               }).toList(),
             ),
           ),
-          // ── 3) ÜRÜN LİSTESİ ──
-          // Expanded: Kalan Tüm Dikey Alanı Kapla. ListView Sınırsız Yükseklik İster,
-          // Column İse Sınır Koymaz; Expanded Olmadan Uygulama Hata Verirdi.
+
+          // ── 3) ÜRÜN LİSTESİ ────────────────────────────────────────────────
+          // Expanded: Column'da Kalan Tüm Dikey Alanı Bu Widget'a Ver.
+          // ListView Sınırsız Uzayabilir, Column İse Ona Bir Sınır Koymaz.
+          // Expanded Olmasaydı Flutter Listenin Yüksekliğini Bilemez ve Hata Verirdi.
           Expanded(
-            // İç İçe Ternary ile 3 Farklı Ekran Durumu Yönetilir.
+            // İç İçe Ternary ( ? : ) ile 3 Farklı Durum Yönetiliyor:
+            //   Yükleniyorsa      → Dönen Çember
+            //   Değilse, Liste Boşsa → "Ürün Bulunamadı" Mesajı
+            //   Değilse           → Ürün Listesi
             child: _yukleniyorMu
                 // DURUM A: Yükleniyor → Ortada Dönen Çember.
                 ? const Center(child: CircularProgressIndicator())
                 : _filtrelenmisUrunler.isEmpty
-                // DURUM B: Sonuç Yok → Büyüteç İkonu ve Bilgi Mesajı.
+                // DURUM B: Hiç Ürün Yok (Arama/Filtre Sonucu Boş) → Bilgi Mesajı.
                 ? Center(
                     child: Column(
+                      // Column'un İçeriğini Dikeyde Ortala.
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // Büyük, Silik Bir Büyüteç İkonu.
                         Icon(
                           Icons.search,
                           size: 64,
@@ -255,26 +461,30 @@ class _UrunListesiEkraniState extends State<UrunListesiEkrani> {
                       ],
                     ),
                   )
-                // DURUM C: Ürünler Var → Liste.
-                // ListView.builder Sadece Ekranda GÖRÜNEN Kartları Üretir;
-                // Binlerce Ürün Olsa Bile Performanslı Çalışır.
+                // DURUM C: Ürünler Var → Kaydırılabilir Liste.
+                // ListView.builder: Sadece Ekranda GÖRÜNEN Satırları Oluşturur.
+                // Kullanıcı Aşağı Kaydırdıkça Yeni Satırlar Oluşturulur.
+                // Böylece Binlerce Ürün Olsa Bile Uygulama Yavaşlamaz.
                 : ListView.builder(
-                    // Listede Kaç Eleman Var.
+                    // Listede Toplam Kaç Satır Olacak.
                     itemCount: _filtrelenmisUrunler.length,
-                    // Her Satır İçin Çağrılır ve O Satırın Widget'ını Döndürür.
+                    // Her Satır için Çağrılır. index: Satırın Sıra Numarası (0, 1, 2...).
+                    // Bu Fonksiyon O Satırda Gösterilecek Widget'ı Döndürür.
                     itemBuilder: (context, index) {
+                      // O Sıradaki Ürünü Al.
                       final urun = _filtrelenmisUrunler[index];
-                      // urun_karti.dart Dosyasındaki Widget.
+                      // urun_karti.dart Dosyasındaki Kart Widget'ı.
                       return UrunKarti(
                         urun: urun,
-                        // Kalbe Basılınca Favori Durumunu Değiştir.
+                        // Kalbe Basılınca Ne Olsun: Bu Ürünün Favori Durumunu Değiştir.
+                        // "() => ..." Parametresiz Kısa Fonksiyon.
                         onFavoriTiklandi: () => _favoriyiDegistir(urun),
-                        // Karta Basılınca Alttan Kayan Kısa Bir Mesaj (SnackBar) Göster.
+                        // Karta Basılınca Ne Olsun: Alttan Kısa Bir Mesaj Göster.
                         onDetayTiklandi: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('${urun.baslik} tıklandı!'),
-                              // Mesaj 1 Saniye Görünsün.
+                              // Mesaj 1000 Milisaniye (1 Saniye) Görünsün.
                               duration: const Duration(milliseconds: 1000),
                             ),
                           );
