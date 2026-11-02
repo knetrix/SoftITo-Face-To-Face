@@ -1,79 +1,79 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // Flutter'ın Material Widget'larını import Eder.
 
-class WaterProgressCard extends StatelessWidget {
-  final int currentWater;
-  final int dailyGoal;
+class WaterProgressCard extends StatelessWidget { // Günlük Su İlerlemesini Gösteren StatelessWidget'tır.
+  final int currentWater; // İçilen Güncel Su Miktarını Tutar.
+  final int dailyGoal; // Günlük Su Hedefini Tutar.
 
-  const WaterProgressCard({
-    super.key,
-    required this.currentWater,
-    required this.dailyGoal,
+  const WaterProgressCard({ // Field'ları Alan const Constructor'dır.
+    super.key, // key Parametresini Superclass'a İletir.
+    required this.currentWater, // currentWater Field'ını required Yapar.
+    required this.dailyGoal, // dailyGoal Field'ını required Yapar.
   });
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final progress = (currentWater / dailyGoal).clamp(0.0, 1.0);
-    final percentage = (progress * 100).toInt();
+  @override // Superclass'taki build Metodunun Override Edildiğini Belirtir.
+  Widget build(BuildContext context) { // Kartın Widget Tree'sini Oluşturur.
+    final theme = Theme.of(context); // Aktif ThemeData'yı Alır.
+    final isDark = theme.brightness == Brightness.dark; // Dark Mode Aktif mi Diye Hesaplar.
+    final progress = (currentWater / dailyGoal).clamp(0.0, 1.0); // İlerleme Oranını 0 İle 1 Arasında Hesaplar.
+    final percentage = (progress * 100).toInt(); // İlerlemeyi Tam Sayı Yüzdeye Çevirir.
 
-    final secondaryTextColor = isDark ? Colors.white70 : Colors.black54;
-    final primaryTextColor = isDark ? Colors.white : Colors.black87;
-    final trackColor = isDark
-        ? const Color(0xFF21262D)
-        : const Color(0xFFE1E4E8);
-    final primaryColor = theme.colorScheme.primary;
+    final secondaryTextColor = isDark ? Colors.white70 : Colors.black54; // Moda Göre İkincil Text Rengini Seçer.
+    final primaryTextColor = isDark ? Colors.white : Colors.black87; // Moda Göre Birincil Text Rengini Seçer.
+    final trackColor = isDark // Moda Göre İlerleme Çubuğu Arka Plan Rengini Seçer.
+        ? const Color(0xFF21262D) // Dark Mode İçin Track Rengidir.
+        : const Color(0xFFE1E4E8); // Light Mode İçin Track Rengidir.
+    final primaryColor = theme.colorScheme.primary; // Theme'in primary Rengini Alır.
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            Text(
-              'GÜNLÜK SU HEDEFİ',
-              style: TextStyle(
-                color: secondaryTextColor,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
+    return Card( // İçeriği Bir Card İçinde Gösterir.
+      child: Padding( // Card İçeriğine Boşluk Verir.
+        padding: const EdgeInsets.all(24.0), // Her Yönden 24 Piksel Boşluk Verir.
+        child: Column( // İçeriği Dikey Olarak Sıralar.
+          children: [ // Column'un Alt Widget'larını Tanımlar.
+            Text( // Kart Başlığını Gösteren Text'tir.
+              'GÜNLÜK SU HEDEFİ', // Başlık Metnidir.
+              style: TextStyle( // Başlık Stilini Tanımlar.
+                color: secondaryTextColor, // İkincil Text Rengini Uygular.
+                fontSize: 13, // Font Boyutunu 13 Yapar.
+                fontWeight: FontWeight.bold, // Yazıyı Kalın Yapar.
+                letterSpacing: 1.5, // Harf Aralığını Belirler.
               ),
             ),
-            const SizedBox(height: 16),
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 170,
-                  height: 170,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 14,
-                    backgroundColor: trackColor,
-                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+            const SizedBox(height: 16), // 16 Piksel Dikey Boşluk Bırakır.
+            Stack( // Dairesel Göstergeyi ve Metinleri Üst Üste Yerleştirir.
+              alignment: Alignment.center, // Stack İçeriğini Ortalar.
+              children: [ // Stack'in Alt Widget'larını Tanımlar.
+                SizedBox( // Dairesel Göstergeye Sabit Boyut Verir.
+                  width: 170, // Genişliği 170 Piksel Yapar.
+                  height: 170, // Yüksekliği 170 Piksel Yapar.
+                  child: CircularProgressIndicator( // Dairesel İlerleme Göstergesini Oluşturur.
+                    value: progress, // İlerleme Oranını Atar.
+                    strokeWidth: 14, // Çizgi Kalınlığını 14 Yapar.
+                    backgroundColor: trackColor, // Track Rengini Uygular.
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor), // İlerleme Rengini primary Renk Yapar.
                   ),
                 ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$currentWater',
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: primaryTextColor,
+                Column( // Gösterge Ortasındaki Metinleri Dikey Sıralar.
+                  mainAxisSize: MainAxisSize.min, // Column'u İçeriği Kadar Yükseklikte Tutar.
+                  children: [ // Column'un Alt Widget'larını Tanımlar.
+                    Text( // Güncel Su Miktarını Gösteren Text'tir.
+                      '$currentWater', // currentWater Değerini Yazar.
+                      style: TextStyle( // Miktar Yazısının Stilini Tanımlar.
+                        fontSize: 36, // Font Boyutunu 36 Yapar.
+                        fontWeight: FontWeight.bold, // Yazıyı Kalın Yapar.
+                        color: primaryTextColor, // Birincil Text Rengini Uygular.
                       ),
                     ),
-                    Text(
-                      '/ $dailyGoal ml',
-                      style: TextStyle(fontSize: 14, color: secondaryTextColor),
+                    Text( // Hedef Miktarı Gösteren Text'tir.
+                      '/ $dailyGoal ml', // Günlük Hedefi ml Cinsinden Yazar.
+                      style: TextStyle(fontSize: 14, color: secondaryTextColor), // 14 Font Boyutu ve İkincil Renk Uygular.
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '%$percentage Tamamlandı',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: primaryColor,
+                    const SizedBox(height: 4), // 4 Piksel Dikey Boşluk Bırakır.
+                    Text( // Tamamlanma Yüzdesini Gösteren Text'tir.
+                      '%$percentage Tamamlandı', // Yüzde Değerini Yazar.
+                      style: TextStyle( // Yüzde Yazısının Stilini Tanımlar.
+                        fontSize: 12, // Font Boyutunu 12 Yapar.
+                        fontWeight: FontWeight.w600, // Yazıyı Yarı Kalın Yapar.
+                        color: primaryColor, // primary Rengi Uygular.
                       ),
                     ),
                   ],

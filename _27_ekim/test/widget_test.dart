@@ -12,7 +12,7 @@ import 'package:_27_ekim/main.dart';
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MiniMagazaUygulamasi());
+    await tester.pumpWidget(const MiniStoreApp());
     await tester.pumpAndSettle();
 
     // Verify that app bar title exists.

@@ -228,5 +228,3 @@ Eğer 5 ayrı sayfada doğrudan `final dio = Dio();` derseniz:
 
 * **Mantık:** Sunucudan gelen veriye asla %100 güvenmeme prensibidir.
 * **Kural:** Hiçbir API isteği `try-catch` bloğu olmadan (hata yakalama mekanizması kurulmadan) çağrılmamalıdır.
-
-# Sorular

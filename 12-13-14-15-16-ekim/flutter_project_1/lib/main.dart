@@ -1,93 +1,93 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // Flutter'ın Material Widget'larını import Eder.
 
-import 'screens/01_layout_screen.dart';
-import 'screens/02_markets_list_screen.dart';
-import 'screens/03_transfer_form_screen.dart';
+import 'screens/01_layout_screen.dart'; // LayoutStylingScreen Class'ını import Eder.
+import 'screens/02_markets_list_screen.dart'; // MarketsGridListScreen Class'ını import Eder.
+import 'screens/03_transfer_form_screen.dart'; // TransferFormScreen Class'ını import Eder.
 
-void main() {
-  runApp(const DtmMasterApp());
+void main() { // Uygulamanın Entry Point'idir.
+  runApp(const DtmMasterApp()); // DtmMasterApp'i Root Widget Olarak Çalıştırıp Uygulamayı Başlatır.
 }
 
-class DtmMasterApp extends StatelessWidget {
-  const DtmMasterApp({
-    super.key,
-  }); // super verdiğimiz Stateless'e key i gönderir.
+class DtmMasterApp extends StatelessWidget { // Uygulamanın Root Widget'ıdır, State Tutmayan Bir StatelessWidget'tır.
+  const DtmMasterApp({ // const Constructor'dır.
+    super.key, // key Parametresini Superclass Olan StatelessWidget'a İletir.
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: "DTM Flutter Sınıfı",
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1),
-          brightness: Brightness.light,
+  @override // Superclass'taki build Metodunun Override Edildiğini Belirtir.
+  Widget build(BuildContext context) { // Uygulamanın Widget Tree'sini Oluşturur.
+    return MaterialApp( // Material Design Tabanlı Uygulama İskeletini Döndürür.
+      debugShowCheckedModeBanner: false, // Sağ Üstteki Debug Banner'ını Gizler.
+      title: "DTM Flutter Sınıfı", // İşletim Sisteminin Görev Yöneticisinde Görünen Uygulama title'ıdır.
+      theme: ThemeData( // Uygulamanın Genel Theme Ayarlarını Tanımlar.
+        useMaterial3: true, // Material 3 Tasarım Sistemini Aktif Eder.
+        colorScheme: ColorScheme.fromSeed( // Tek Bir Seed Color'dan Tüm ColorScheme'i Üretir.
+          seedColor: const Color(0xFF6366F1), // ColorScheme'in Üretileceği Ana Renktir.
+          brightness: Brightness.light, // Light Mode Renk Paletini Kullanır.
         ),
       ),
-      home: const LiveCanvasScreen(),
+      home: const LiveCanvasScreen(), // Uygulama Açıldığında Gösterilecek İlk Ekranı Belirler.
     );
   }
 }
 
-class LiveCanvasScreen extends StatefulWidget {
-  const LiveCanvasScreen({super.key});
+class LiveCanvasScreen extends StatefulWidget { // Seçili Sekmeyi State Olarak Tutan Ana Ekran StatefulWidget'ıdır.
+  const LiveCanvasScreen({super.key}); // key Parametresini Superclass'a İleten const Constructor'dır.
 
-  @override
-  State<LiveCanvasScreen> createState() => _LiveCanvasScreenState();
+  @override // Superclass'taki createState Metodunun Override Edildiğini Belirtir.
+  State<LiveCanvasScreen> createState() => _LiveCanvasScreenState(); // Bu Widget'a Ait State Nesnesini Oluşturur.
 }
 
-class _LiveCanvasScreenState extends State<LiveCanvasScreen> {
-  int _selectedIndex = 0;
+class _LiveCanvasScreenState extends State<LiveCanvasScreen> { // LiveCanvasScreen'in State'ini ve UI'ını Yöneten Private Class'tır.
+  int _selectedIndex = 0; // NavigationBar'da Seçili Olan Sekmenin Index'ini Tutar.
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FaFC),
-      appBar: AppBar(
-        title: const Text(
-          "DTM Canlı Arayüz",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+  @override // Superclass'taki build Metodunun Override Edildiğini Belirtir.
+  Widget build(BuildContext context) { // Ana Ekranın Widget Tree'sini Oluşturur.
+    return Scaffold( // Sayfanın Temel Material Layout'unu Oluşturur.
+      backgroundColor: const Color(0xFFF8FaFC), // Scaffold'un Arka Plan Rengini Belirler.
+      appBar: AppBar( // Ekranın Üstüne Bir AppBar Ekler.
+        title: const Text( // AppBar'ın title Text'ini Tanımlar.
+          "DTM Canlı Arayüz", // AppBar'da Görünen Başlık Metnidir.
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18), // Başlığı Bold ve 18 Font Size Yapar.
         ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_active_outlined),
-            onPressed: () {},
+        centerTitle: true, // title'ı AppBar'ın Ortasına Hizalar.
+        backgroundColor: Colors.white, // AppBar'ın Arka Plan Rengini Beyaz Yapar.
+        elevation: 0, // AppBar'ın Gölgesini Kaldırır.
+        actions: [ // AppBar'ın Sağ Tarafındaki Action Widget'larının Listesidir.
+          IconButton( // Tıklanabilir Bir İkon Butonu Oluşturur.
+            icon: const Icon(Icons.notifications_active_outlined), // Bildirim İkonunu Gösterir.
+            onPressed: () {}, // Şimdilik Boş Bir onPressed Callback'idir.
           ),
         ],
       ), // AppBar
-      body: SafeArea(
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: const [
-            LayoutStylingScreen(),
-            MarketsGridListScreen(),
-            TransferFormScreen(),
+      body: SafeArea( // İçeriği Çentik ve Status Bar Gibi Sistem Alanlarından Korur.
+        child: IndexedStack( // Tüm Sayfaları Bellekte Tutup Yalnızca Seçili Index'tekini Gösterir.
+          index: _selectedIndex, // Gösterilecek child'ın Index'ini Belirler.
+          children: const [ // IndexedStack'teki Sayfaların Listesidir.
+            LayoutStylingScreen(), // Index 0: Ana Sayfa Ekranıdır.
+            MarketsGridListScreen(), // Index 1: Piyasalar Ekranıdır.
+            TransferFormScreen(), // Index 2: Transfer Ekranıdır.
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
+      bottomNavigationBar: NavigationBar( // Ekranın Altına NavigationBar Ekler.
+        selectedIndex: _selectedIndex, // Seçili Sekmenin Index'ini Belirler.
+        onDestinationSelected: (index) { // Bir Destination Seçildiğinde Çalışan Callback'tir.
+          setState(() => _selectedIndex = index); // Seçilen Index'i Kaydedip build() Metodunu Tetikler.
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Ana Sayfa',
+        destinations: const [ // NavigationBar'daki Destination Listesidir.
+          NavigationDestination( // Ana Sayfa Destination'ını Tanımlar.
+            icon: Icon(Icons.home_outlined), // Seçili Değilken Görünen İkondur.
+            selectedIcon: Icon(Icons.home), // Seçiliyken Görünen İkondur.
+            label: 'Ana Sayfa', // Destination'ın Altında Görünen label'dır.
           ),
-          NavigationDestination(
-            icon: Icon(Icons.show_chart),
-            label: 'Piyasalar',
+          NavigationDestination( // Piyasalar Destination'ını Tanımlar.
+            icon: Icon(Icons.show_chart), // Grafik İkonunu Gösterir.
+            label: 'Piyasalar', // Destination'ın Altında Görünen label'dır.
           ),
-          NavigationDestination(
-            icon: Icon(Icons.send_outlined),
-            selectedIcon: Icon(Icons.send),
-            label: 'Transfer',
+          NavigationDestination( // Transfer Destination'ını Tanımlar.
+            icon: Icon(Icons.send_outlined), // Seçili Değilken Görünen İkondur.
+            selectedIcon: Icon(Icons.send), // Seçiliyken Görünen İkondur.
+            label: 'Transfer', // Destination'ın Altında Görünen label'dır.
           ),
         ],
       ),

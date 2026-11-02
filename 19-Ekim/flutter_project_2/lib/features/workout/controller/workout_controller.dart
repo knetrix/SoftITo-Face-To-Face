@@ -1,39 +1,39 @@
-import 'package:flutter/foundation.dart';
-import '../models/workout_item.dart';
+import 'package:flutter/foundation.dart'; // ChangeNotifier İçin Flutter'ın foundation Library'sini import Eder.
+import '../models/workout_item.dart'; // WorkoutItem Model'ini import Eder.
 
-class WorkoutController extends ChangeNotifier {
-  final List<WorkoutItem> _workouts = [
-    const WorkoutItem(
-      id: '1',
-      title: 'Gece Koşusu',
-      durationMinutes: 30,
-      caloriesBurned: 280,
-      category: WorkoutCategory.cardio,
+class WorkoutController extends ChangeNotifier { // Antrenman State'ini Yöneten ve Değişiklikleri Bildiren Controller'dır.
+  final List<WorkoutItem> _workouts = [ // Antrenmanları Tutan Private Listeyi Başlangıç Verileriyle Oluşturur.
+    const WorkoutItem( // İlk Örnek Antrenmanı Oluşturur.
+      id: '1', // Antrenmanın id'sini Belirler.
+      title: 'Gece Koşusu', // Antrenmanın Başlığını Belirler.
+      durationMinutes: 30, // Süreyi 30 Dakika Olarak Belirler.
+      caloriesBurned: 280, // Yakılan Kaloriyi 280 Olarak Belirler.
+      category: WorkoutCategory.cardio, // Kategoriyi Kardiyo Olarak Belirler.
     ),
-    const WorkoutItem(
-      id: '2',
-      title: 'Bench Press & Göğüs',
-      durationMinutes: 45,
-      caloriesBurned: 320,
-      category: WorkoutCategory.strength,
+    const WorkoutItem( // İkinci Örnek Antrenmanı Oluşturur.
+      id: '2', // Antrenmanın id'sini Belirler.
+      title: 'Bench Press & Göğüs', // Antrenmanın Başlığını Belirler.
+      durationMinutes: 45, // Süreyi 45 Dakika Olarak Belirler.
+      caloriesBurned: 320, // Yakılan Kaloriyi 320 Olarak Belirler.
+      category: WorkoutCategory.strength, // Kategoriyi Kuvvet Olarak Belirler.
     ),
   ];
 
-  List<WorkoutItem> get workouts => List.unmodifiable(_workouts);
+  List<WorkoutItem> get workouts => List.unmodifiable(_workouts); // Antrenmanların Değiştirilemez Bir Kopyasını Döndürür.
 
-  int get totalCalories =>
-      _workouts.fold(0, (sum, item) => sum + item.caloriesBurned);
+  int get totalCalories => // Toplam Yakılan Kaloriyi Döndüren Getter'dır.
+      _workouts.fold(0, (sum, item) => sum + item.caloriesBurned); // Tüm Antrenmanların caloriesBurned Değerlerini Toplar.
 
-  int get totalMinutes =>
-      _workouts.fold(0, (sum, item) => sum + item.durationMinutes);
+  int get totalMinutes => // Toplam Antrenman Süresini Döndüren Getter'dır.
+      _workouts.fold(0, (sum, item) => sum + item.durationMinutes); // Tüm Antrenmanların durationMinutes Değerlerini Toplar.
 
-  void addWorkout(WorkoutItem item) {
-    _workouts.insert(0, item);
-    notifyListeners();
+  void addWorkout(WorkoutItem item) { // Yeni Antrenman Ekleyen Metottur.
+    _workouts.insert(0, item); // Antrenmanı Listenin Başına Ekler.
+    notifyListeners(); // Listener'ları Değişiklikten Haberdar Eder.
   }
 
-  void removeWorkout(String id) {
-    _workouts.removeWhere((item) => item.id == id);
-    notifyListeners();
+  void removeWorkout(String id) { // Verilen id'ye Sahip Antrenmanı Silen Metottur.
+    _workouts.removeWhere((item) => item.id == id); // id'si Eşleşen Antrenmanı Listeden Kaldırır.
+    notifyListeners(); // Listener'ları Değişiklikten Haberdar Eder.
   }
 }
