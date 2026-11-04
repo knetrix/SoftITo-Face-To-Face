@@ -1,25 +1,20 @@
 # _3_kasim — Proje Özeti
 
-Bu Proje, **Flutter** ile Yazılmış ve **Firebase Cloud Firestore** Kullanan Basit Bir **Öğrenci Yönetim** Uygulamasıdır.
-Öğrenciler (Ad Soyad, Email, Proje Adı, Puan) Bulutta (Firestore) Saklanır; Uygulama Bu Verileri Listeler, Ekler, Günceller ve Siler.
+**Flutter** ile Yazılmış, **Firebase Cloud Firestore** Kullanan Basit Bir **Öğrenci Yönetim** Uygulaması.
+Öğrenciler (Ad Soyad, Email, Proje Adı, Puan) Bulutta Saklanır; Uygulama Bunları Listeler, Ekler, Günceller ve Siler.
 
-> Bu Doküman, Flutter'a Yeni Başlayan Birinin Projeyi Baştan Sona Anlayabilmesi için **Okuma Sırasına Göre** Yazılmıştır.
-> Önerilen Okuma Sırası: `pubspec.yaml` → `student.dart` → `firestore_student_service.dart` → `main.dart` → `firestore_management_screen.dart` → `widget_test.dart`.
+> Önerilen Okuma Sırası: `pubspec.yaml` → `student.dart` → `firestore_student_service.dart` → `firebase_options.dart` → `main.dart` → `firestore_management_screen.dart` → `widget_test.dart`.
+> Projeyi Sıfırdan Kuracaksan Önce **12. Bölüme** Bak; Firebase Yapılandırması Olmadan Uygulama Boş Beyaz Ekranda Kalır.
 
-## 1. Temel Kavramlar (Önce Bunları Bil)
+## 1. Temel Kavramlar
 
 | Kavram | Kısa Açıklama |
 |---|---|
-| **Widget** | Flutter'da Ekrandaki Her Şey (Yazı, Buton, Sayfa) Bir Widget'tır. |
-| **StatelessWidget** | İçinde Değişen Veri Tutmayan Widget. |
-| **StatefulWidget** | İçinde Değişen Veri (State) Tutan Widget. Değişiklik `setState()` ile Ekrana Yansır. |
-| **State** | StatefulWidget'ın Değişken Verisini ve `build()` Metodunu Taşıyan Ayrı Sınıf. |
-| **build()** | Widget'ın Ekranda Nasıl Görüneceğini Döndüren Metot. |
-| **BuildContext** | Widget'ın Ağaçtaki Konumu. `Navigator`, `ScaffoldMessenger` Gibi Üst Widget'lara Ulaşmak için Kullanılır. |
-| **Future** | İleride Bir Kez Gelecek Sonuç (Ör: İnternetten Tek Seferlik Veri). `async/await` ile Beklenir. |
-| **Stream** | Zamanla Sürekli Yeni Değerler Yayan Veri Akışı (Ör: Canlı Veritabanı). |
-| **Firestore** | Google'ın Bulut NoSQL Veritabanı. Veriler **Collection → Document → Field** Yapısında Tutulur. |
-| **CRUD** | Create (Ekle), Read (Oku), Update (Güncelle), Delete (Sil) İşlemlerinin Kısaltması. |
+| **Widget** | Ekrandaki Her Şey (Yazı, Buton, Sayfa) Bir Widget'tır. |
+| **StatelessWidget / StatefulWidget** | Değişen Veri Tutmayan / Tutan Widget. Değişiklik `setState()` ile Ekrana Yansır. |
+| **build() / BuildContext** | Widget'ı Çizen Metot / Widget'ın Ağaçtaki Konumu (`Navigator`, `ScaffoldMessenger`'a Ulaşmak için). |
+| **Future / Stream** | Bir Kez Gelen Sonuç / Zamanla Sürekli Yeni Değer Yayan Akış. |
+| **Firestore / CRUD** | Google'ın Bulut NoSQL Veritabanı (**Collection → Document → Field**) / Create, Read, Update, Delete. |
 
 ### 1.1 Firestore Veri Yapısı
 
@@ -29,472 +24,277 @@ students (Collection)
       ├── nameSurname      : String
       ├── email            : String
       ├── projectName      : String
-      ├── point            : int
+      ├── point            : int (Console'da Tip Olarak int64 Seçilir)
       ├── registrationDate : Timestamp
       └── updateDate       : Timestamp (Güncellemede Eklenir)
 ```
 
-- Firestore'da **Şema Yoktur**: Bir Document'ta Olan Alan Diğerinde Olmayabilir. Bu Yüzden Model'de `??` ile Varsayılan Değer Verilir.
+- Firestore'da **Şema Yoktur**; Bir Dokümanda Olan Alan Diğerinde Olmayabilir. Bu Yüzden Model'de `??` ile Varsayılan Değer Verilir.
 
-### 1.2 Klasik SQL ve Firestore Karşılaştırması (`images/1.png`)
+### 1.2 SQL ve Firestore (`images/1.png`, `images/2.png`)
 
-| Kavram | Klasik SQL | Firestore (NoSQL) | Mobil Dünyadaki Karşılığı |
-|---|---|---|---|
-| Veriler | Tablo (Table) | Koleksiyon (Collection) | `kullanicilar`, `siparisler`, `mesajlar` |
-| Tek Veri | Satır (Row) | Doküman (Document) | Tek Bir Kullanıcının JSON Nesnesi |
-| Veri Alanı | Sütun (Column) | Alan (Field) | `ad: "Ahmet"`, `bakiye: 450.50` |
-| İlişkiler | `JOIN`, `FOREIGN KEY` | Alt Koleksiyon (Subcollection) veya Gömülü Veri (Map) | `kullanicilar/USER12/siparisler/ORD99` |
-| Sorgu Hızı | Tablo Büyüdükçe Yavaşlar: O(N), İndeksle O(log N) | Veritabanı Büyüklüğünden Bağımsız; Sadece Çekilen Sonuç Sayısına Bağlı | Milyonlarca Kayıt Olsa da 20 Kayıt ~15 ms'de Çekilebilir |
-| Veri Sınırı | Disk Kapasitesi Kadar | Tek Bir Doküman En Fazla 1 MB | Dokümana Büyük İkili (Binary) Dosyalar Konmaz |
+| Kavram | Klasik SQL | Firestore (NoSQL) |
+|---|---|---|
+| Veriler / Tek Veri / Alan | Tablo / Satır / Sütun | Koleksiyon / Doküman / Alan |
+| İlişkiler | `JOIN`, `FOREIGN KEY` | Alt Koleksiyon veya Gömülü Map (`kullanicilar/USER12/siparisler/ORD99`) |
+| Sorgu Hızı | Tablo Büyüdükçe Yavaşlar | Sadece Çekilen Sonuç Sayısına Bağlı |
+| Veri Sınırı | Disk Kapasitesi | Tek Doküman En Fazla 1 MB (Alt Koleksiyonlar Bu Sınıra Dahil Değil) |
+| Veri Tipleri | Sütun Tipleri | String, Number, Boolean, Array, Map, Timestamp (**Bu Projede** String, Number, Timestamp) |
 
-> **Bu Projede:** `students` = Tablo, Her Öğrenci = Satır, `nameSurname` / `point` Gibi Alanlar = Sütun.
-
-### 1.3 Örnek Doküman Yapısı ve Veri Tipleri (`images/2.png`)
-
-```text
-kullanicilar (Koleksiyon / Klasör)
- └── fuat_01 (Doküman / JSON, En Fazla 1 MB)
-      ├── ad          : "Fuat Fahri Furkan"                      (String)
-      ├── bakiye      : 100000.75                                (Number)
-      ├── aktifMi     : true                                     (Boolean)
-      ├── roller      : ["ogrenci", "mentor"]                    (Array)
-      ├── adres       : {sehir: "Çanakkale", ilce: "Bozcaada"}   (Map)
-      ├── kayitTarihi : Timestamp                                (serverTimestamp)
-      └── siparisler (Alt Koleksiyon / Subcollection)
-           └── sip_99asda33qr34 (Doküman)
-                ├── urun  : "Macbook Pro M6 32 GB Ram 2 TB SSD"
-                └── tutar : 50000.00
-```
-
-- **Yol (Path) Mantığı:** Koleksiyon / Doküman / Koleksiyon / Doküman → `kullanicilar/fuat_01/siparisler/sip_99asda33qr34`.
-- Alt Koleksiyon, Üst Dokümanın 1 MB Sınırına Dahil Değildir ve Üst Doküman Okunduğunda Otomatik Gelmez.
-- **Bu Projede** Sadece String, Number (`point`) ve Timestamp Kullanılıyor; Boolean, Array, Map ve Alt Koleksiyon Kullanılmıyor.
-
-### 1.4 Future ve Stream Karşılaştırması
+### 1.3 Future ve Stream
 
 | Özellik | Future | Stream |
 |---|---|---|
-| Kaç Değer Döner? | Bir Kez | Sıfır veya Daha Fazla, Sürekli |
-| Benzetme | Fotoğraf Çekmek | Canlı Yayın |
-| UI'da Kullanımı | `FutureBuilder` | `StreamBuilder` |
-| Bu Projede | `getStudents()` | `watchStudents()` |
+| Kaç Değer? | Bir Kez (Fotoğraf) | Sürekli (Canlı Yayın) |
+| UI'da | `FutureBuilder` | `StreamBuilder` |
+| Bu Projede | `getStudents()` → `FirebaseHomePage` (Açılışta Kullanılmıyor) | `watchStudents()` → `FirestoreManagementScreen` (Açılış Ekranı) |
 
 ## 2. Klasör Yapısı ve Mimari
 
 ```text
 _3_kasim/
-├── pubspec.yaml                 → Proje Ayarları ve Paketler
-├── analysis_options.yaml        → Lint (Kod Kalitesi) Ayarları
+├── pubspec.yaml, README.md, firebase.json (*)
 ├── lib/
-│   ├── main.dart                → Uygulamanın Başlangıç Noktası
-│   ├── models/student.dart      → Öğrenci Veri Modeli
-│   ├── services/firestore_student_service.dart → Firestore İşlemleri (CRUD)
-│   ├── screens/firestore_management_screen.dart → Canlı Yönetim Ekranı
-│   ├── images/1.png, 2.png      → Ders Notu Görselleri (Bkz. 1.2 ve 1.3)
-│   └── SUMMARY.md               → Bu Doküman
-├── test/widget_test.dart        → Basit Birim Testi
-└── android/, ios/, ...          → Platforma Özel Dosyalar (Flutter Otomatik Üretir)
+│   ├── main.dart                                → Başlangıç Noktası
+│   ├── firebase_options.dart (*)                → Platforma Göre Firebase Ayarları
+│   ├── models/student.dart                      → Veri Modeli
+│   ├── services/firestore_student_service.dart  → Firestore CRUD İşlemleri
+│   ├── screens/firestore_management_screen.dart → Canlı Yönetim Ekranı (Açılış Ekranı)
+│   ├── images/1.png, 2.png                      → Ders Notu Görselleri
+│   └── SUMMARY.md                               → Bu Doküman
+├── docs/screenshots/                            → README Ekran Görüntüleri
+├── test/widget_test.dart                        → Basit Test
+├── android/app/google-services.json (*)         → Android Firebase Ayarları
+└── ios/Runner/GoogleService-Info.plist (*)      → iOS Firebase Ayarları
 ```
 
-### 2.1 Katmanlı Mimari: **Model → Service → Screen (UI)**
+> (*) Bu Dosyaları `dart run flutterfire_cli:flutterfire configure` Üretir. Komut Ayrıca Android Gradle Dosyalarına
+> Google Services Eklentisini, `ios/Runner.xcodeproj/project.pbxproj`'a da Plist Referansını Ekler.
 
-```text
-Screen (UI)  → Kullanıcıyı Dinler, Sonucu Ekrana Çizer   (main.dart, firestore_management_screen.dart)
-   │ Çağırır
-Service      → Firestore ile Konuşur                     (firestore_student_service.dart)
-   │ Student Nesnesi Üretir / Kullanır
-Model        → Verinin Şekli                             (student.dart)
-```
+**Katmanlı Mimari: Model → Service → Screen.** UI Firestore'a Sadece Service Üzerinden Erişir; Veritabanı Değişirse Sadece Service Değişir.
 
-- UI, Veritabanıyla **Doğrudan Konuşmaz**; Her Zaman Service Üzerinden Konuşur.
-- Faydası: Yarın Firestore Yerine Başka Bir Veritabanı Kullanılırsa Sadece Service Değişir, Ekranlar Aynı Kalır.
+## 3. `pubspec.yaml` — Paketler
 
-## 3. `pubspec.yaml` — Proje Kimliği ve Paketler
-
-- `name: _3_kasim` → Paketin Adı (Import'larda `package:_3_kasim/...` Olarak Geçer).
-- `publish_to: 'none'` → Paketin Yanlışlıkla pub.dev'e Yüklenmesini Engeller.
-- `version: 1.0.0+1` → `1.0.0` Görünen Sürüm, `+1` Build Numarasıdır.
-- `sdk: ^3.13.5` → Kullanılan Dart Sürümü (`^` = Bu Sürüm ve Uyumlu Üst Sürümler).
+- `name: _3_kasim` (Import'larda `package:_3_kasim/...`), `publish_to: 'none'`, `version: 1.0.0+1`, `sdk: ^3.13.5`.
 
 | Paket | Sürüm | Görevi |
 |---|---|---|
-| `firebase_core` | `^5.1.0` | Firebase'i Uygulamada Başlatmak için Zorunlu Temel Paket. |
-| `cloud_firestore` | `^7.1.0` | Firestore Veritabanına Erişim Paketi. |
+| `firebase_core` | `^5.1.0` | Firebase'i Başlatmak için Zorunlu Temel Paket. |
+| `cloud_firestore` | `^7.1.0` | Firestore Erişimi. |
 | `cupertino_icons` | `^1.0.8` | iOS Tarzı İkonlar. |
-| `flutter_test` | SDK | Test Yazmak için (Dev). |
-| `flutter_lints` | `^6.0.0` | Kod Kalitesi Kuralları (Dev). |
+| `flutter_lints` (Dev) | `^6.0.0` | Kod Kalitesi Kuralları. |
+| `flutterfire_cli` (Dev) | `^1.4.1` | Firebase Yapılandırma Dosyalarını Üreten Araç; Uygulamanın İçine Girmez. |
 
-- `uses-material-design: true` → `Icons.person` Gibi Material İkonlarının Kullanılabilmesini Sağlar.
-- `assets:` Bölümü Yorum Satırında; Yani Henüz Hiçbir Görsel Tanımlı Değil.
-
-Paket Eklemek için: `flutter pub add firebase_core cloud_firestore` (`main.dart`'ın İlk Satırında da Not Olarak Yazılı).
+- **Global Kurulum** (`dart pub global activate flutterfire_cli`): `~/.pub-cache`'e Kurulur, `~/.pub-cache/bin` PATH'e Eklenmeli, Komut `flutterfire`.
+- **Proje Bazlı Kurulum** (`flutter pub add --dev flutterfire_cli`): Sürüm `pubspec.lock`'a Sabitlenir, Komut `dart run flutterfire_cli:flutterfire`. **Bu Projede Bu Yol Kullanılıyor.**
+- Kurulu Paketler: `dart pub global list` (Global), `flutter pub deps --style=compact` (Proje), `npm list -g --depth=0` (npm).
+- `assets:` Bölümü Yorum Satırında; `lib/images/` Görselleri Kodda Kullanılmıyor.
 
 ## 4. `lib/models/student.dart` — Veri Modeli
 
-Uygulamadaki "Öğrenci" Kavramını Temsil Eden Sınıftır. Önce Model Okunur, Çünkü Diğer Tüm Dosyalar Bunu Kullanır.
+`class Student`: `id`, `nameSurname`, `email`, `projectName` (`String`), `point` (`int`), `registrationDate` (`DateTime`).
+Hepsi `final` (**Immutable**); Constructor `required` İsimli Parametreler Alır. `updateDate` Model'de Yok.
 
-### 4.1 `class Student`
-
-| Field | Tip | Açıklama |
-|---|---|---|
-| `id` | `String` | Firestore Document Id'si. |
-| `nameSurname` | `String` | Ad Soyad. |
-| `email` | `String` | Email Adresi. |
-| `projectName` | `String` | Proje Adı. |
-| `point` | `int` | Puan (0–100). |
-| `registrationDate` | `DateTime` | Kayıt Tarihi. |
-
-- Hepsi `final` → Nesne Oluşturulduktan Sonra Değiştirilemez (**Immutable**).
-- `updateDate` Alanı Firestore'da Olsa da Model'de **Yoktur**; Yani Uygulama Bu Alanı Okumaz.
-
-### 4.2 `const Student({required ...})`
-
-Named (İsimli) ve Zorunlu Parametreli Constructor. Örnek: `Student(id: '', nameSurname: 'Ali', ..., point: 90, ...)`
-
-- `required` → Bu Parametre Verilmezse Kod Derlenmez.
-
-### 4.3 `factory Student.fromFireStore(DocumentSnapshot snapshot)`
-
-Firestore'dan Gelen Ham Dokümanı `Student` Nesnesine Çevirir.
+**`factory Student.fromFireStore(DocumentSnapshot snapshot)`** → Firestore Dokümanını `Student`'a Çevirir:
 
 | Satır | Ne Yapar? |
 |---|---|
-| `snapshot.data() as Map<String, dynamic>? ?? {}` | Doküman Verisini Map Olarak Alır; Boşsa Boş Map Kullanır. |
-| `id: snapshot.id` | Id, Verinin İçinde Değil, Dokümanın Kendisinde Durur. |
-| `data['email'] as String? ?? ''` | Alan Yoksa Boş String Verir; Uygulama Çökmez. |
-| `(data['point'] as num?)?.toInt() ?? 0` | `num` Olarak Okur, `int`'e Çevirir (Firestore Sayıları `double` da Gelebilir). |
-| `(data['registrationDate'] as Timestamp?)?.toDate() ?? DateTime.now()` | Firestore `Timestamp`'ini Dart `DateTime`'a Çevirir. |
+| `snapshot.data() as Map<String, dynamic>? ?? {}` | Veriyi Map Olarak Alır; Boşsa Boş Map. |
+| `id: snapshot.id` | Id Verinin İçinde Değil, Dokümanın Kendisinde Durur. |
+| `data['email'] as String? ?? ''` | Alan Yoksa Boş String; Uygulama Çökmez. |
+| `(data['point'] as num?)?.toInt() ?? 0` | `num` Okur, `int`'e Çevirir (int64 ve double İkisi de Çalışır). |
+| `(data['registrationDate'] as Timestamp?)?.toDate() ?? DateTime.now()` | `Timestamp` → `DateTime`. |
 
-> **Neden `factory`?** Normal Constructor Gövdesinde Hesaplama Yapıp Farklı Bir Nesne Döndüremez.
-> `factory` İse Önce Veriyi İşleyip Sonra `return Student(...)` ile Nesne Döndürebilir.
-
-> **İpucu:** `serverTimestamp()` ile Yazılan Bir Kayıt, Sunucu Onaylayana Kadar Yerelde `null` Görünebilir.
-> Bu Durumda `?? DateTime.now()` Devreye Girer; Bu Yüzden Bu Varsayılan Değer Önemlidir.
+> **Neden `factory`?** Önce Veriyi İşleyip Sonra `return Student(...)` ile Nesne Döndürebilir.
+> `serverTimestamp()` ile Yazılan Kayıt Sunucu Onaylayana Kadar Yerelde `null` Görünür; O An `?? DateTime.now()` Devreye Girer.
 
 ## 5. `lib/services/firestore_student_service.dart` — Veritabanı Katmanı
 
-Firestore ile İlgili **Tüm** İşlemler Burada Toplanır (CRUD).
-
-### 5.1 `class FirestoreStudentService`
-
-- **`_studenCollection`**: `FirebaseFirestore.instance.collection('students')` → `students` Collection'ına Referans.
-  - Başındaki `_` Onu **Private** Yapar (Sadece Bu Dosyadan Erişilir).
-  - `FirebaseFirestore.instance` → Uygulama Genelinde Tek Olan (Singleton) Firestore Nesnesi.
-
-### 5.2 Metotlar
+`_studenCollection = FirebaseFirestore.instance.collection('students')` → Private (`_`) Collection Referansı; `instance` Singleton'dır.
 
 | Metot | Dönüş | CRUD | Ne Yapar? |
 |---|---|---|---|
-| `addStudent({student})` | `Future<String>` | Create | Yeni Doküman Ekler, Id'yi Döndürür. |
-| `saveStudentWithId({student})` | `Future<void>` | Create/Update | Belirli Id'ye Yazar (Merge). *(Kullanılmıyor.)* |
-| `getStudents()` | `Future<List<Student>>` | Read | Listeyi **Bir Kez** Çeker. |
-| `watchStudents()` | `Stream<List<Student>>` | Read | Listeyi **Canlı** Dinler. |
-| `pointUpdate({id, newPoint})` | `Future<void>` | Update | Sadece Puanı Günceller. |
-| `deleteStudent({id})` | `Future<void>` | Delete | Dokümanı Siler. |
+| `addStudent({student})` | `Future<String>` | Create | `.add()` ile Otomatik Id'li Doküman Ekler, Id'yi Döndürür. |
+| `saveStudentWithId({student})` | `Future<void>` | Create/Update | `.doc(id).set(..., SetOptions(merge: true))`. *(Kullanılmıyor.)* |
+| `getStudents()` | `Future<List<Student>>` | Read | `orderBy('point', descending: true).get()` ile Bir Kez Çeker. |
+| `watchStudents()` | `Stream<List<Student>>` | Read | `.snapshots()` ile Canlı Dinler. |
+| `pointUpdate({id, newPoint})` | `Future<void>` | Update | `.update()` ile Puanı ve `updateDate`'i Yazar. |
+| `deleteStudent({id})` | `Future<void>` | Delete | `.delete()` ile Dokümanı Siler. |
 
-### 5.3 `addStudent`
+- **`addStudent`:** Tarih için `FieldValue.serverTimestamp()` Yazılır (Cihaz Saati Yanlış Olabilir); `catch` İçindeki `rethrow` Hatayı Ekrana İletir.
+- **`set` + `merge` vs `update`:** `set` Doküman Yoksa Oluşturur; `update` Doküman Yoksa Hata Verir. `saveStudentWithId` Her Çağrıda `registrationDate`'i de Yeniden Yazar.
+- **`getStudents`:** Hata Olursa Boş Liste Döner (Hata Yutulur); Ekran "Hata" ile "Öğrenci Yok"u Ayırt Edemez.
+- **`watchStudents`:** `.map((s) => s.docs.map(Student.fromFireStore).toList())` → `Student.fromFireStore` **Tear-Off** Kullanımıdır.
+- `pointUpdate` ve `deleteStudent`'ta `try/catch` Yok; Hata Doğrudan Ekrana Ulaşır.
 
-- `_studenCollection.add({...})` → Firestore **Otomatik Id** Üretir; `docRef.id` Geri Döndürülür.
-- `registrationDate` için `student.registrationDate` Değil, `FieldValue.serverTimestamp()` Yazılır.
-  Böylece Kullanıcının Telefon Saati Yanlış Olsa Bile Doğru (Sunucu) Saati Kaydedilir.
-- `try/catch` → Hata `debugPrint` ile Konsola Yazılır ve `rethrow` ile **Çağırana İletilir**.
-  Böylece Ekran Hatayı Yakalayıp Kullanıcıya SnackBar Gösterebilir.
+> `orderBy('point')` Kullanan Sorgular, `point` Alanı **Olmayan** Dokümanları Sonuçlara Dahil Etmez.
 
-### 5.4 `saveStudentWithId`
-
-- `.doc(student.id).set(data, SetOptions(merge: true))`
-- `set()` → Doküman Yoksa Oluşturur, Varsa Üzerine Yazar.
-- `merge: true` → Sadece Gönderilen Alanları Değiştirir, Diğer Alanları Silmez.
-- **Dikkat:** Her Çağrıda `registrationDate` da Yeniden Yazılır; Yani Kayıt Tarihi Değişir.
-
-### 5.5 `getStudents`
-
-- `.orderBy('point', descending: true).get()` → Puana Göre **Büyükten Küçüğe** Sıralı, Tek Seferlik Sorgu.
-- `snapshot.docs.map((doc) => Student.fromFireStore(doc)).toList()` → Her Dokümanı `Student`'a Çevirir.
-- Hata Olursa **Boş Liste** Döner (Hata Yutulur). Bu Yüzden Ekran "Hata" ile "Hiç Öğrenci Yok" Durumunu Ayırt Edemez.
-
-### 5.6 `watchStudents`
-
-```dart
-return _studenCollection
-    .orderBy('point', descending: true)
-    .snapshots()
-    .map((snapshot) => snapshot.docs.map(Student.fromFireStore).toList());
-```
-
-- `.snapshots()` → Veritabanı Her Değiştiğinde Yeni `QuerySnapshot` Yayar.
-- `.map(...)` → Stream'deki Her Değeri `List<Student>`'a Dönüştürür.
-- `map(Student.fromFireStore)` → **Tear-Off** Kullanımı: `(doc) => Student.fromFireStore(doc)` Yazmanın Kısa Hali.
-
-### 5.7 `pointUpdate` ve `deleteStudent`
-
-- `.update({...})` → Sadece Verilen Alanları Değiştirir. Doküman **Yoksa Hata Fırlatır** (`set`'ten Farkı).
-- `pointUpdate` Aynı Zamanda `updateDate` Alanını Sunucu Saatiyle Ekler.
-- `.delete()` → Dokümanı Tamamen Siler. Bu Metotlarda `try/catch` Yoktur; Hata Doğrudan Ekrana Ulaşır.
-
-> **Not:** `orderBy('point')` Kullanan Sorgular, `point` Alanı **Olmayan** Dokümanları Sonuçlara Dahil Etmez.
-
-## 6. `lib/main.dart` — Uygulamanın Giriş Noktası
+## 6. `lib/main.dart` ve `lib/firebase_options.dart`
 
 ### 6.1 `void main() async`
 
-Her Flutter Uygulaması Buradan Başlar.
+1. `WidgetsFlutterBinding.ensureInitialized()` → `runApp`'ten Önce Native Kod Çağrılacağı için Flutter Motorunu Hazırlar.
+2. `await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` → Firebase'i Platformun Ayarlarıyla Başlatır.
+3. `runApp(const FirebaseApp())` → Kök Widget'ı Çizer.
 
-1. `WidgetsFlutterBinding.ensureInitialized()` → `runApp`'ten Önce Native (Android/iOS) Kod Çağrılacağı için Flutter Motorunu Hazırlar.
-2. `await Firebase.initializeApp()` → Firebase Bağlantısını Kurar; Bitmeden Uygulama Açılmaz.
-3. `runApp(const FirebaseApp())` → Kök Widget'ı Ekrana Çizer.
+> **Boş Beyaz Ekran Sorunu:** `initializeApp` Hata Fırlatırsa `runApp` Hiç Çalışmaz, Sadece Beyaz LaunchScreen Kalır ve Terminalde
+> `[core/not-initialized] Firebase has not been correctly initialized.` Görülür. Sebep: Yapılandırma Dosyaları Yoktu (Çözüm: 12. Bölüm).
 
-### 6.2 `class FirebaseApp extends StatelessWidget`
-
-Uygulamanın Kök Widget'ı. `MaterialApp` Döndürür:
+### 6.2 `FirebaseApp` (Kök Widget) → `MaterialApp`
 
 | Özellik | Değer | Anlamı |
 |---|---|---|
-| `debugShowCheckedModeBanner` | `false` | Sağ Üstteki "DEBUG" Etiketini Gizler. |
-| `title` | `'Firebase'` | Görev Yöneticisinde Görünen Uygulama Adı. |
-| `theme` | `ColorScheme.fromSeed(deepOrange)` | Tek Bir Renkten Tüm Renk Paletini Üretir. |
-| `useMaterial3` | `true` | Material 3 Tasarım Dilini Açar. |
-| `home` | `FirebaseHomePage()` | Açılış Sayfası. |
+| `debugShowCheckedModeBanner` | `false` | "DEBUG" Etiketini Gizler. |
+| `title` | `'Firebase'` | Android'de Son Uygulamalar Listesindeki Ad (iOS'ta Ad `Info.plist`'ten Gelir). |
+| `theme` | `ColorScheme.fromSeed(deepOrange)`, `useMaterial3: true` | Tek Renkten Palet Üretir, Material 3'ü Açar. |
+| `home` | `FirestoreManagementScreen()` | Açılış Sayfası (Bkz. 7. Bölüm). |
 
-### 6.3 `class FirebaseHomePage extends StatelessWidget`
+### 6.3 `FirebaseHomePage` (Açılışta Kullanılmıyor)
 
-Öğrencileri **Tek Seferlik** Listeleyen Sayfa. `Scaffold` (AppBar + Body) İçinde `FutureBuilder<List<Student>>` Kullanır:
+`FutureBuilder` ile Öğrencileri **Tek Seferlik** Listeler: Bekleniyorsa Çark, Boşsa "No students found.", Doluysa `ListView.builder` + `ListTile`.
+Canlı Değildir ve `future:` `build` İçinde Yazıldığı için Her Rebuild'de Yeni Sorgu Atar. Future/Stream Farkını Görmek için Örnek Olarak
+Duruyor; Denemek için `home:` Değerini Geçici Olarak `const FirebaseHomePage()` Yap.
 
-| Durum | Kontrol | Ekranda |
-|---|---|---|
-| Bekleniyor | `connectionState != done` | `CircularProgressIndicator` |
-| Liste Boş | `students.isEmpty` | "No students found." |
-| Veri Var | — | `ListView.builder` + `ListTile` |
+### 6.4 `firebase_options.dart` (FlutterFire CLI Üretir, **Elle Düzenlenmez**)
 
-- Her `ListTile`: `title` = Ad Soyad, `subtitle` = Email - Proje, `trailing` = Puan.
-
-> **Not 1:** Bu Sayfa Canlı Değildir; Veritabanı Değişirse Ekran Kendiliğinden Güncellenmez.
-> **Not 2:** `future: FirestoreStudentService().getStudents()` Doğrudan `build` İçinde Yazıldığı için
-> Sayfa Her Yeniden Çizildiğinde Sorgu Tekrar Atılır. Yönetim Ekranında Bu Sorun `late final` ile Çözülmüştür.
+- `DefaultFirebaseOptions.currentPlatform` → `defaultTargetPlatform`'a Bakıp `android` veya `ios` Ayarını Döndürür.
+- Ayarlar: `apiKey`, `appId`, `messagingSenderId`, `projectId: 'so-3-kasim'`, `storageBucket`; iOS'ta Ek Olarak `iosBundleId`.
+- Kayıtlı Uygulamalar: Android `com.example.u_3_kasim`, iOS `com.example.3Kasim`. Web/macOS/Windows/Linux'ta `UnsupportedError`.
+- `apiKey` Gizli Şifre Değildir; Asıl Güvenliği Firestore Kuralları Sağlar.
 
 ## 7. `lib/screens/firestore_management_screen.dart` — Canlı Yönetim Ekranı
 
-Projenin En Kapsamlı Dosyası. Üstte Öğrenci Ekleme Formu (`_buildForm`), Altta Canlı Öğrenci Listesi (`StreamBuilder` + `_buildStudentTile`) Bulunur.
+Uygulamanın **Açılış Ekranı**. Üstte Ekleme Formu, Altta Canlı Liste. Ekran Görüntüleri: `docs/screenshots/01-management.png`, `02-update.png`, `03-delete.png`.
 
-### 7.1 `String? _validatePoint(String? value)` (Üst Seviye Fonksiyon)
+### 7.1 State Field'ları ve `_validatePoint`
 
-- `int.tryParse(value?.trim() ?? '')` → Metni Sayıya Çevirmeyi Dener; Olmazsa `null` Verir (Çökmez).
-- Puan `null`, `< 0` veya `> 100` İse → `'Point must be between 0 and 100.'`
-- Geçerliyse → `null` (Flutter'da Validator'ın `null` Döndürmesi "Hata Yok" Demektir).
-- Sınıfın Dışında Tanımlandığı için Hem Ana Formda Hem de Güncelleme Dialog'unda **Tekrar Kullanılır**.
+| Field | Görevi |
+|---|---|
+| `_firestoreStudentService` | Service Nesnesi. |
+| `late final _studentsStream` | **Bir Kez** Oluşturulan Canlı Stream. |
+| `_formKey` (`GlobalKey<FormState>`) | Formu Doğrulamak / Sıfırlamak. |
+| 4 × `TextEditingController` | Alanların Metnini Okumak / Temizlemek; `dispose()`'da Serbest Bırakılır. |
+| `_isSaving` | Kayıt Sürerken Butonu Kilitlemek. |
 
-### 7.2 `class FirestoreManagementScreen extends StatefulWidget`
+> **Neden `late final` Stream?** `build()` Defalarca Çalışır; Stream Orada Oluşturulsaydı Her Seferinde Yeni Abonelik Açılır, Liste Titrerdi.
 
-Sadece `createState()` ile State Sınıfını Oluşturur. Asıl İş State Sınıfındadır.
+- `_validatePoint` (Sınıf Dışında): `int.tryParse` ile Çevirir; `null`, `< 0`, `> 100` İse Hata, Geçerliyse `null`. Form ve Dialog Ortak Kullanır.
 
-### 7.3 `class _FirestoreManagementScreenState` — Field'lar
+### 7.2 Metotlar
 
-| Field | Tip | Görevi |
-|---|---|---|
-| `_firestoreStudentService` | `FirestoreStudentService` | Service Nesnesi. |
-| `_studentsStream` | `late final Stream<List<Student>>` | **Bir Kez** Oluşturulan Canlı Stream. |
-| `_formKey` | `GlobalKey<FormState>` | Formu Doğrulamak/Sıfırlamak için. |
-| `_nameSurnameController`, `_emailController`, `_projectNameController`, `_pointController` | `TextEditingController` | Her Input Alanının Metnini Okumak/Temizlemek için. |
-| `_isSaving` | `bool` | Kaydetme Sürüyor mu? (Butonu Kilitlemek için). |
+**`_newStudentSave()`**
+1. `validate()` Başarısızsa Çıkar → `setState(() => _isSaving = true)`.
+2. `addStudent(student: Student(id: '', ...))` (Id'yi Firestore Üretir).
+3. `if (!mounted) return;` → Form `reset()`, Controller'lar `clear()`, Klavye Kapanır, "Student saved." Gösterilir.
+4. `catch` → Hata SnackBar'ı; `finally` → `_isSaving = false`.
 
-> **Neden `late final` Stream?** `build()` Defalarca Çalışabilir. Stream `build` İçinde Oluşturulsaydı
-> Her Seferinde Firestore'a Yeni Abonelik Açılır, Liste Titrer ve Gereksiz Okuma Maliyeti Oluşurdu.
+- **`_deleteStudent(student)`** → `Future<bool>`: Başarılıysa `true` (Satır Kalkar), Hatada `false` (Satır Geri Gelir).
+- **`_pointUpdateDialog(student)`** → `showDialog<int>` ile Yeni Puanı Bekler; İptal (`null`) veya Aynı Puansa Yazmaz, Değilse `pointUpdate`.
+- **`_pointColor(point)`** → 80–100 Yeşil, 51–79 Turuncu, 0–50 Kırmızı. **`_showMessage`** → SnackBar Gösterir.
 
-### 7.4 Metotlar
+> **`mounted` Neden Önemli?** `await` Sırasında Ekran Kapanmış Olabilir; Kapanmış Ekranda `context` / `setState` Kullanmak Hata Verir.
 
-**`dispose()`** → Ekran Kapanınca 4 Controller'ı Serbest Bırakır (Bellek Sızıntısını Önler). En Sonda `super.dispose()` Çağrılır.
+### 7.3 `build()` ve Widget'lar
 
-**`_showMessage(String message)`** → `ScaffoldMessenger.of(context).showSnackBar(...)` ile Ekranın Altında Kısa Bir Mesaj Gösterir.
+- `AppBar` ("Live Firestore Management Screen", `Colors.amber.shade600`) + `CustomScrollView` (`keyboardDismissBehavior: onDrag`).
+- Sliver'lar: `SliverToBoxAdapter(_buildForm())`, `Divider`, `StreamBuilder` → Hata: "Cloud Error: ...", Veri Yok: Çark,
+  Boş: "No Students Found In Cloud.", Dolu: `SliverList.builder` (Boş Durumlarda `SliverFillRemaining(hasScrollBody: false)`).
 
-**`_newStudentSave()`** — Adım Adım:
+> **Neden Sliver?** `Column` İçinde `ListView` Yükseklik Hatası Verir; `CustomScrollView` ile Form ve Liste Aynı Kaydırma Alanını Paylaşır.
 
-1. `_formKey.currentState!.validate()` → Tüm Validator'ları Çalıştırır; Biri Bile Hatalıysa Çıkar.
-2. `setState(() => _isSaving = true)` → Buton Kilitlenir, Çark Döner.
-3. `addStudent(student: Student(id: '', ...))` → Id Boş Verilir, Çünkü Firestore Üretecek.
-4. `if (!mounted) return;` → Ekran Kapandıysa Devam Etmez.
-5. Form `reset()` Edilir, 4 Controller `clear()` Edilir.
-6. `FocusScope.of(context).unfocus()` → Klavye Kapanır.
-7. `'Student saved.'` Mesajı Gösterilir; `catch` Bloğunda İse Hata Mesajı Gösterilir.
-8. `finally` → Başarılı da Olsa Hatalı da Olsa `_isSaving = false` Yapılır.
-
-**`_deleteStudent(Student student)`** → `Future<bool>`
-- Başarılıysa `true` → `Dismissible` Satırı Listeden Kaldırır.
-- Hata Varsa `false` → Satır Yerine Geri Döner.
-
-**`_pointUpdateDialog(Student student)`**
-- `showDialog<int>(...)` → Dialog Açılır ve Kapanırken Dönecek `int` Değer Beklenir.
-- `newPoint == null` (İptal) veya `newPoint == student.point` (Değişmemiş) İse Gereksiz Yazma Yapılmaz.
-- Aksi Halde `pointUpdate` Çağrılır ve Sonuç Mesajı Gösterilir.
-
-**`_pointColor(int point)`** → **80–100 Yeşil**, **51–79 Turuncu**, **0–50 Kırmızı**.
-
-> **`mounted` Neden Önemli?** `await` Sırasında Kullanıcı Ekrandan Çıkmış Olabilir.
-> Kapanmış Bir Ekranda `context` veya `setState` Kullanmak Hataya Yol Açar. `if (!mounted) return;` Bunu Önler.
-
-### 7.5 `build()`
-
-- `Scaffold` + `AppBar` (Başlık: "Live Firestore Management Screen", Renk: `Colors.amber.shade600`).
-- `CustomScrollView` + **Sliver**'lar → Form ve Liste Tek Kaydırma Alanında Birleşir.
-  - `keyboardDismissBehavior: onDrag` → Listeyi Kaydırınca Klavye Kapanır.
-  - `SliverToBoxAdapter(_buildForm())` → Normal Bir Widget'ı Sliver'a Çevirir.
-  - `SliverToBoxAdapter(Divider(thickness: 2))` → Ayırıcı Çizgi.
-  - `StreamBuilder<List<Student>>` → `_studentsStream`'i Dinler:
-
-| Durum | Dönen Sliver | Ekranda |
-|---|---|---|
-| `snapshot.hasError` | `SliverFillRemaining` | "Cloud Error: ..." |
-| `!snapshot.hasData` | `SliverFillRemaining` | Yükleniyor Çarkı |
-| Liste Boş | `SliverFillRemaining` | "No Students Found In Cloud." |
-| Liste Dolu | `SliverList.builder` | Her Öğrenci için `_buildStudentTile` |
-
-> **Neden Sliver?** `Column` İçine `ListView` Koymak Yükseklik Hatası Verir. `CustomScrollView` ile
-> Form ve Liste Aynı Kaydırma Alanını Paylaşır; Liste Uzadıkça Form da Yukarı Kayar.
-> `SliverFillRemaining(hasScrollBody: false)` → Kalan Boş Alanı Doldurur ve Mesajı Ortalar.
-
-### 7.6 `_buildForm()`
-
-`Padding(12)` → `Form(key: _formKey)` → `Column` İçinde 4 `TextFormField` + 1 Buton:
+**`_buildForm()`** → 4 `TextFormField` + Buton:
 
 | Alan | İkon | Klavye | Doğrulama |
 |---|---|---|---|
-| Name Surname | `Icons.person` | Varsayılan | Boş Olamaz |
-| Email | `Icons.email` | `emailAddress` | `RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')` |
-| Project Name | `Icons.work` | Varsayılan | Boş Olamaz |
-| Point (0-100) | `Icons.grade` | `number` | `_validatePoint` |
+| Name Surname | `person` | Varsayılan | Boş Olamaz |
+| Email | `email` | `emailAddress` | `RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')` (`ali@mail.com` ✓, `ali@mail` ✗) |
+| Project Name | `work` | Varsayılan | Boş Olamaz |
+| Point (0-100) | `grade` | `number` | `_validatePoint` |
 
-- `textInputAction: next` → Klavyedeki Tuş Sonraki Alana Geçer; Son Alanda `done` Kullanılır.
-- `OutlineInputBorder()` → Çerçeveli Input Görünümü; `SizedBox(height: 8)` → Alanlar Arası Boşluk.
-- **Email RegExp:** `[^@\s]+` = "@ ve Boşluk Dışında En Az Bir Karakter", Ardından `@`, Domain, `\.` (Nokta) ve Uzantı.
-  Örn: `ali@mail.com` ✓, `ali@mail` ✗.
+- Buton: `onPressed: _isSaving ? null : _newStudentSave` (`null` → Devre Dışı); Kayıtta Çark + "Saving...", Değilse "Save Cloud.".
 
-**`ElevatedButton.icon`**
-- Arka Plan Pembe, Yazı Beyaz, `Size.fromHeight(44)` ile Tam Genişlik.
-- `onPressed: _isSaving ? null : _newStudentSave` → `null` Verilen Buton Otomatik Olarak **Devre Dışı** Olur.
-- `_isSaving` İse 18x18 Beyaz Çark ve "Saving..." Yazısı; Değilse `cloud_upload` İkonu ve "Save Cloud.".
+**`_buildStudentTile(student)`**
+- `Dismissible`: `key: ValueKey(student.id)`, Sadece Sağdan Sola, Kırmızı Arka Plan + Çöp İkonu, `confirmDismiss` Silme Bitene Kadar Bekler.
+- `ListTile`: Solda Renkli `CircleAvatar` (Puan), Kalın Ad Soyad, `'email - Project: projectName'`, Sağda `edit` Butonu.
 
-### 7.7 `_buildStudentTile(Student student)`
+**`_PointUpdateDialog`** (Ayrı StatefulWidget, Çünkü Kendi Controller'ı Var ve `dispose` Edilmeli)
+- `late final _controller` Mevcut Puanla Başlar (`widget`'a Field Tanımında Erişilemez). `_submit()` → `Navigator.pop(context, yeniPuan)`; "Cancel" → `null`.
 
-- **`Dismissible`** → Satırı Kaydırarak Silmeyi Sağlar.
-  - `key: ValueKey(student.id)` → Flutter Hangi Satırın Silindiğini Id ile Takip Eder.
-  - `direction: endToStart` → Sadece **Sağdan Sola** Kaydırma.
-  - `background` → Kırmızı Arka Plan + Beyaz `delete_forever` İkonu.
-  - `confirmDismiss: (_) => _deleteStudent(student)` → Silme Bitip `true` Dönene Kadar Satır Kaldırılmaz.
-- **`ListTile`**
-  - `leading` → Puan Rengine Göre `CircleAvatar` İçinde Kalın Beyaz Puan.
-  - `title` → Kalın Ad Soyad; `subtitle` → `'email - Project: projectName'`.
-  - `trailing` → `amberAccent` Renkli `edit` `IconButton` → `_pointUpdateDialog` Açar.
+## 8. `test/widget_test.dart`
 
-### 7.8 `class _PointUpdateDialog` / `_PointUpdateDialogState`
+Tek Test: `expect(const FirebaseApp(), isA<StatelessWidget>())`. `pumpWidget` Kullanılmaz, Çünkü Testte Gerçek Firebase Başlatılamaz. Çalıştır: `flutter test`.
 
-Puan Güncelleme Penceresi (`AlertDialog`). Sınıf Adı `_` ile Başladığı için Sadece Bu Dosyada Kullanılır.
-
-- `final Student student` → Dialog'a Dışarıdan Verilen Öğrenci; `_formKey` → Dialog'un Kendi Formu.
-- `late final _controller` → Mevcut Puanla Başlar; `widget`'a Field Tanımında Erişilemediği için `late` ile İlk Kullanımda Oluşturulur.
-- `dispose()` → Controller'ı Serbest Bırakır.
-- `_submit()` → Doğrular ve `Navigator.pop(context, yeniPuan)` ile Değeri **Çağıran Yere Geri Gönderir**.
-- `build()` →
-  - `title`: "Ad Soyad - Update Point"
-  - `content`: `autofocus: true` Olan Sayısal `TextFormField` (`onFieldSubmitted` ile Enter'a Basınca da Kaydeder).
-  - `actions`: "Cancel" (`Navigator.pop(context)` → `null` Döner) ve "Update" (`_submit`).
-
-> **Neden Dialog Ayrı Bir StatefulWidget?** Dialog'un Kendi Controller'ı Var ve Kapanınca `dispose` Edilmeli.
-> Ayrı Bir State Sınıfı Bu Yaşam Döngüsünü Kendi Başına Yönetir.
-
-## 8. `test/widget_test.dart` — Test
-
-- Tek Test: `expect(const FirebaseApp(), isA<StatelessWidget>())` → `FirebaseApp`'in Bir `StatelessWidget` Olduğunu Doğrular.
-- `testWidgets` + `pumpWidget` Kullanılmaz, Çünkü Gerçek Firebase Testte Başlatılamaz. Çalıştırmak için: `flutter test`
-
-## 9. Veri Akışları (Uçtan Uca)
-
-### 9.1 Öğrenci Ekleme
+## 9. Veri Akışları
 
 ```text
-Kullanıcı Formu Doldurur → "Save Cloud." Basar
-  → _newStudentSave()  (Screen) → validate() ✓
-  → addStudent()       (Service)
-  → students.add({...}) (Firestore)
-  → watchStudents() Yeni Listeyi Yayar
-  → StreamBuilder Ekranı Otomatik Yeniler → SnackBar: "Student saved."
+Ekleme:  "Save Cloud." → _newStudentSave() → validate() ✓ → addStudent() → students.add()
+         → watchStudents() Yeni Listeyi Yayar → StreamBuilder Ekranı Yeniler → "Student saved."
+Güncelle: Edit → showDialog<int> → "Update" → pop(context, 85) → pointUpdate(id, 85) → doc(id).update()
+         → Stream Yeni Sıralı Listeyi Yayar
+Silme:   Sağdan Sola Kaydır → confirmDismiss → deleteStudent(id) → doc(id).delete()
+         → true: Satır Kaybolur + SnackBar | false: Satır Geri Gelir + Hata SnackBar
 ```
 
-### 9.2 Puan Güncelleme
-
-```text
-Edit İkonuna Basılır → _pointUpdateDialog(student)
-  → showDialog<int> → _PointUpdateDialog Açılır
-  → "Update" → Navigator.pop(context, 85)
-  → newPoint Farklı mı? ✓ → pointUpdate(id, 85) → doc(id).update({...})
-  → Stream Yeni Sıralı Listeyi Yayar (Öğrenci Yeni Yerine Geçer)
-```
-
-### 9.3 Öğrenci Silme
-
-```text
-Satır Sağdan Sola Kaydırılır → confirmDismiss → _deleteStudent(student)
-  → deleteStudent(id) → doc(id).delete()
-  → true  → Satır Kaybolur + SnackBar
-  → false → Satır Geri Gelir + Hata SnackBar
-```
-
-## 10. Dart Dil Özellikleri Sözlüğü
+## 10. Dart Söz Dizimi
 
 | Söz Dizimi | Örnek | Anlamı |
 |---|---|---|
-| `?` (Nullable Tip) | `String?` | Değer `null` Olabilir. |
-| `??` | `x ?? ''` | Sol Taraf `null` İse Sağ Tarafı Kullan. |
-| `?.` | `value?.trim()` | Nesne `null` Değilse Metodu Çağır. |
-| `!` | `currentState!` | "Bu Kesinlikle `null` Değil" Garantisi. |
-| `late` | `late final` | İlk Kullanımda Başlatılır. |
-| `const` | `const Text(...)` | Derleme Zamanı Sabiti; Performans Sağlar. |
-| `factory` | `Student.fromFireStore` | Hesaplama Yapıp Nesne Döndüren Constructor. |
-| `_` Ön Eki | `_formKey` | Dosyaya Özel (Private). |
-| `rethrow` | `catch { rethrow; }` | Yakalanan Hatayı Tekrar Fırlat. |
-| Tear-Off | `map(Student.fromFireStore)` | Fonksiyonu Çağırmadan Referans Olarak Geçme. |
+| `?` / `??` / `?.` | `String?`, `x ?? ''`, `value?.trim()` | Nullable Tip / `null` İse Sağı Kullan / `null` Değilse Çağır |
+| `!` | `currentState!` | "Kesinlikle `null` Değil" Garantisi |
+| `late` / `const` | `late final`, `const Text(...)` | İlk Kullanımda Başlat / Derleme Zamanı Sabiti |
+| `factory` / Tear-Off | `Student.fromFireStore`, `map(Student.fromFireStore)` | Nesne Döndüren Constructor / Fonksiyonu Referans Olarak Geçme |
+| `_` Ön Eki / `rethrow` | `_formKey`, `catch { rethrow; }` | Dosyaya Özel (Private) / Yakalanan Hatayı Tekrar Fırlat |
 
-## 11. Dikkat Edilmesi Gerekenler ve Bilinen Eksikler
+## 11. Bilinen Eksikler
 
-1. **Açılış Ekranı:** `main.dart` Şu An `FirebaseHomePage`'i Açıyor. Canlı Yönetim Ekranını Görmek için
-   `import 'screens/firestore_management_screen.dart';` Eklenip `home: const FirestoreManagementScreen()` Yapılmalı.
-2. **Firebase Yapılandırması:** `Firebase.initializeApp()` Parametresiz Çağrıldığı için
-   Android'de `android/app/google-services.json`, iOS'ta `ios/Runner/GoogleService-Info.plist` Gerekir.
-   Projede Bu Dosyalar Bulunmuyor. Önerilen Yol: `flutterfire configure` ile `firebase_options.dart` Üretip
-   `Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` Kullanmak.
-3. **Görseller:** `lib/images/` Altındaki Ders Notu Görselleri (Bkz. 1.2, 1.3) `pubspec.yaml`'da `assets` Olarak Tanımlı Değil ve Kodda Kullanılmıyor.
-4. **Kullanılmayan Metot:** `saveStudentWithId` Tanımlı Ama Hiçbir Yerde Çağrılmıyor.
-5. **Yazım Hatası:** `_studenCollection` → `_studentCollection` Olmalı.
-6. **Hata Yutma:** `getStudents()` Hata Olunca Boş Liste Döndürdüğü için `FirebaseHomePage` Hatayı Gösteremez.
-7. **Tekrarlanan Sorgu:** `FirebaseHomePage`'de Future `build` İçinde Oluşturuluyor; Her Rebuild'de Yeni Sorgu Atılır.
-8. **Gösterilmeyen Alanlar:** `registrationDate` ve `updateDate` Ekranda Hiç Gösterilmiyor; `updateDate` Model'de de Yok.
-9. **Firestore Kuralları:** Güvenlik Kuralları Okuma/Yazmaya İzin Vermiyorsa `permission-denied` Hatası Alınır.
-   Geliştirme Aşamasında "Test Mode" Kullanılabilir (Canlıda Kullanılmamalı).
-10. **Silme Geri Alınamaz:** Kaydırarak Silmede Onay Penceresi Yok; Yanlışlıkla Kaydırılan Öğrenci Kalıcı Olarak Silinir.
+1. ~~Açılış Ekranı `FirebaseHomePage`'di; Firebase Yapılandırması Yoktu.~~ **Çözüldü:** `FirestoreManagementScreen` + `flutterfire configure`.
+2. **Kullanılmayan Metot:** `saveStudentWithId` Hiçbir Yerde Çağrılmıyor.
+3. **Yazım Hatası:** `_studenCollection` → `_studentCollection` Olmalı.
+4. **Hata Yutma / Tekrarlanan Sorgu:** `FirebaseHomePage` Hataları Gösteremez ve Her Rebuild'de Yeni Sorgu Atar.
+5. **Gösterilmeyen Alanlar:** `registrationDate` ve `updateDate` Ekranda Yok; `updateDate` Model'de de Yok.
+6. **Test Mode Süresi:** Kural **30 Gün** Sonra Tüm İstekleri Reddeder (`permission-denied`); Firestore → Rules'tan Tarihi Uzat.
+   Auth Olmadığı için Bu Sürede Veritabanı Herkese Açık; Gerçek Kişisel Veri Girme.
+7. **Silme Geri Alınamaz:** Kaydırarak Silmede Onay Penceresi Yok.
+8. **Platform Desteği:** Sadece Android ve iOS Yapılandırıldı; Web/macOS'ta `UnsupportedError`.
 
 ## 12. Kurulum ve Çalıştırma
 
 ```bash
-flutter pub get          # Paketleri İndir
-flutterfire configure    # (Önerilen) Firebase Yapılandırmasını Üret
-flutter run              # Uygulamayı Çalıştır
-flutter test             # Testleri Çalıştır
+node -v                                             # 1. Node.js Kurulu mu? (npm için)
+npm install -g firebase-tools                       # 2. Firebase CLI
+firebase login                                      # 3. Google ile Giriş (Gemini / Kullanım Verisi Soruları İsteğe Bağlı)
+firebase projects:list                              #    Girişi Doğrula
+gem install xcodeproj                               # 4. FlutterFire'ın iOS Projesini Düzenlemesi için
+flutter pub get                                     # 5. Paketler (flutterfire_cli Dahil)
+dart run flutterfire_cli:flutterfire configure      # 6. Projeyi Seç, android + ios; Sonra lib/firebase_options.dart'ı Kontrol Et
+flutter clean && flutter pub get                    # 7. Native Dosyalar Değişti; Hot Reload Yetmez
+flutter run                                         # 8. Çalıştır (flutter test ile Testler)
 ```
 
-**Firebase Console:** Proje Oluştur → Android/iOS Uygulaması Ekle (Paket Adı: `com.example.u_3_kasim`) → Firestore Database Oluştur.
+**Firebase Console → Firestore Database → Create Database:**
+- **Standard Edition**, Database ID **`(default)`** (`FirebaseFirestore.instance` Sadece Buna Bağlanır), Yakın Bir **Location** (Sonradan Değişmez).
+- **Start in Test Mode** (Production'daki `allow read, write: if false;` Tüm İstekleri Reddeder).
+- **Scheduled Backups** Ücretli Blaze Planı İster; Boş Bırakıp **Create**. Ücretsiz Spark Planı Yeterli.
+- **+ Start Collection** → `students` → **Auto-ID** → `nameSurname`, `email`, `projectName`: string; `point`: **int64** ("number" Yok); `registrationDate`: timestamp.
 
 ### 12.1 Sık Karşılaşılan Hatalar
 
-| Hata | Olası Sebep | Çözüm |
+| Hata | Sebep | Çözüm |
 |---|---|---|
-| `No Firebase App '[DEFAULT]' has been created` | `initializeApp` Çalışmadı | Yapılandırma Dosyalarını Ekle. |
-| `permission-denied` | Firestore Kuralları | Kuralları Düzenle. |
-| `Binding has not yet been initialized` | `ensureInitialized` Eksik | `main`'in Başına Ekle. |
-| Liste Hep Boş | `getStudents` Hatayı Yuttu | Konsoldaki `debugPrint` Çıktısına Bak. |
+| Boş Beyaz Ekran / `[core/not-initialized]` | Yapılandırma Dosyaları Yok | `configure` Çalıştır, `options:` Ekle. |
+| `zsh: command not found: flutterfire` | PATH'te Yok veya Proje Bazlı Kurulu | `dart run flutterfire_cli:flutterfire ...` veya `~/.pub-cache/bin`'i PATH'e Ekle. |
+| `project_id contains invalid characters` | ID Rakamla Başlıyor (`3-kasim`) | Harfle Başlat (`so-3-kasim`); Ayrıntı `firebase-debug.log`'da (`.gitignore`'da). |
+| `cannot load such file -- xcodeproj` | Ruby Paketi Eksik | `gem install xcodeproj`, `configure`'ı Tekrarla. |
+| `Target of URI doesn't exist: 'firebase_options.dart'` | `configure` Yarıda Kaldı | Tekrar Çalıştır, Mevcut Projeyi Seç. |
+| `permission-denied` / Liste Hep Boş | Production Kuralı veya Test Süresi Doldu | Firestore → Rules'u Düzenle. |
+| Console'da Var, Listede Yok | `point` Eksik veya Alan Adı Yanlış (Büyük/Küçük Harf) | Alanı Düzelt; `orderBy('point')` Getirmez. |
 
 ## 13. Kendini Test Et
 
-1. `watchStudents()` Neden `Future` Değil de `Stream` Döndürüyor? → Veritabanı Her Değiştiğinde Yeni Liste Yayması Gerektiği için.
-2. `_studentsStream` Neden `late final` Field? → Her `build`'de Yeni Abonelik Açılmasını Önlemek için.
-3. Neden `DateTime.now()` Yerine `FieldValue.serverTimestamp()`? → Cihaz Saati Yanlış Olabilir; Sunucu Saati Herkes için Aynıdır.
-4. `set` + `merge` ile `update()` Farkı? → `set` Doküman Yoksa Oluşturur; `update` Doküman Yoksa Hata Verir.
-5. `confirmDismiss` `false` Döndürürse? → Satır Listeden Kaldırılmaz, Yerine Geri Döner.
-6. `Navigator.pop(context, value)` Değeri Nerede Karşılanır? → `final newPoint = await showDialog<int>(...)` Satırında.
+1. `watchStudents()` Neden `Stream`? → Veritabanı Her Değiştiğinde Yeni Liste Yaymalı.
+2. `_studentsStream` Neden `late final`? → Her `build`'de Yeni Abonelik Açılmasın.
+3. `set` + `merge` ile `update()` Farkı? → `set` Yoksa Oluşturur; `update` Yoksa Hata Verir.
+4. `confirmDismiss` `false` Döndürürse? → Satır Kaldırılmaz, Geri Döner.
+5. `Navigator.pop(context, value)` Nerede Karşılanır? → `final newPoint = await showDialog<int>(...)`.
+6. Firebase Yapılandırılmadan Neden Beyaz Ekran? → `initializeApp` Hata Fırlatır, `runApp` Çağrılmaz.
+7. Database ID Neden `(default)`? → `FirebaseFirestore.instance` Sadece `(default)`'a Bağlanır.

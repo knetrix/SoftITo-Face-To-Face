@@ -1,6 +1,6 @@
 # _3_kasim
 
-Öğrencilerin ad soyad, e-posta, proje adı ve puan bilgilerini **Firebase Cloud Firestore**'da sakladığın; ekleme, puan güncelleme ve silme işlemlerini **canlı** olarak yaptığın basit bir öğrenci yönetim uygulaması. Flutter ile yazılmıştır; veriler bulutta `students` koleksiyonunda tutulur, değişiklikler tüm açık ekranlara anında yansır.
+Öğrencilerin ad soyad, e-posta, proje adı ve puanını Firebase Cloud Firestore'da tutan küçük bir öğrenci yönetim uygulaması. Flutter ile yazıldı. Öğrenci ekleyebilir, puanını güncelleyebilir ya da silebilirsin; veriler `students` koleksiyonunda durur ve yapılan her değişiklik açık ekranlarda hemen görünür.
 
 | Yönetim Ekranı | Puan Güncelleme | Silme |
 | --- | --- | --- |
@@ -8,17 +8,17 @@
 
 ## Özellikler
 
-- Öğrenci ekleme formu (Ad Soyad, Email, Proje Adı, Puan) ve alan doğrulama: boş alan, geçersiz e-posta, 0–100 dışındaki puan uyarı verir
-- Firestore'u `snapshots()` ile dinleyen canlı liste; Firebase Console'dan yapılan değişiklikler de yenilemeden görünür
-- Öğrenciler puana göre azalan sırada listelenir; puan rozeti 80 ve üzeri yeşil, 51–79 turuncu, 50 ve altı kırmızı
-- Kalem ikonuyla açılan dialog üzerinden puan güncelleme (`updateDate` sunucu zamanıyla yazılır)
-- Satırı sağdan sola kaydırarak öğrenciyi Firestore'dan silme
-- Kayıt, güncelleme ve silme sonuçları için SnackBar bildirimleri
-- Kayıt tarihi cihaz saati yerine `FieldValue.serverTimestamp()` ile sunucu zamanı olarak yazılır
+- Ad Soyad, Email, Proje Adı ve Puan alanlarından oluşan ekleme formu. Boş alan, geçersiz e-posta ya da 0 ile 100 arasında olmayan puan girilirse form uyarı verir
+- Firestore'u `snapshots()` ile dinleyen canlı liste. Firebase Console'dan yapılan değişiklikler de sayfayı yenilemeden gelir
+- Liste puana göre büyükten küçüğe sıralanır. Puan rozeti 80 ve üzerinde yeşil, 51 ile 79 arasında turuncu, 50 ve altında kırmızıdır
+- Kalem ikonu puan güncelleme dialog'unu açar; kayıt sırasında `updateDate` sunucu zamanıyla yazılır
+- Satırı sağdan sola kaydırınca öğrenci Firestore'dan silinir
+- Kayıt, güncelleme ve silme sonuçları SnackBar ile gösterilir
+- Kayıt tarihi `FieldValue.serverTimestamp()` ile sunucu saatinden alınır
 
 ## Kurulum ve çalıştırma
 
-Gereksinimler: Flutter SDK, Node.js, Xcode (iOS için), Android Studio (Android için).
+Gerekenler: Flutter SDK, Node.js, iOS için Xcode, Android için Android Studio.
 
 ```bash
 npm install -g firebase-tools                       # Firebase CLI
@@ -31,14 +31,14 @@ flutter test
 flutter run                                         # bağlı cihaz / emülatör
 ```
 
-> Not: `flutterfire_cli` projeye `dev_dependencies` olarak eklenmiştir, bu yüzden `flutterfire` yerine `dart run flutterfire_cli:flutterfire` ile çalıştırılır ve PATH ayarı gerekmez. Proje ID'si küçük harfle başlamalıdır (`3-kasim` geçersiz, `so-3-kasim` geçerli). iOS en düşük sürümü 15.0'dır.
+> Not: `flutterfire_cli` projeye `dev_dependencies` olarak eklendi. Bu yüzden komut `flutterfire` yerine `dart run flutterfire_cli:flutterfire` ile çalışır ve PATH ayarına gerek kalmaz. Firebase proje ID'si küçük harfle başlamalı: `3-kasim` kabul edilmez, `so-3-kasim` edilir. iOS için en düşük sürüm 15.0.
 
-`configure` şu dosyaları oluşturur: `lib/firebase_options.dart`, `ios/Runner/GoogleService-Info.plist`, `android/app/google-services.json`, `firebase.json`. Ayrıca Android Gradle dosyalarına Google Services eklentisini, Xcode projesine de plist dosyasını ekler.
+`configure` komutu `lib/firebase_options.dart`, `ios/Runner/GoogleService-Info.plist`, `android/app/google-services.json` ve `firebase.json` dosyalarını oluşturur. Android Gradle dosyalarına Google Services eklentisini, Xcode projesine de plist dosyasını kendisi ekler.
 
-Firebase Console'da yapılması gerekenler:
+Firebase Console'da iki adım kalıyor:
 
-1. **Firestore Database → Create database** → Standard edition, Database ID `(default)`, **test mode**
-2. `students` koleksiyonunu oluştur; alan tipleri: `nameSurname`, `email`, `projectName` → string, `point` → int64, `registrationDate` → timestamp
+1. Firestore Database sayfasında Create database'e bas. Standard edition'ı seç, Database ID'yi `(default)` bırak ve test mode ile başlat.
+2. `students` koleksiyonunu oluştur. `nameSurname`, `email` ve `projectName` string, `point` int64, `registrationDate` timestamp olmalı.
 
 ## Firestore veri yapısı
 
@@ -55,12 +55,14 @@ students (Collection)
 
 ## Mimari
 
-Katmanlı yapı: **Model → Service → Screen**. `models/student.dart` veri şeklini ve `fromFireStore` dönüşümünü, `services/firestore_student_service.dart` tüm Firestore CRUD işlemlerini (`addStudent`, `getStudents`, `watchStudents`, `pointUpdate`, `deleteStudent`, `saveStudentWithId`) içerir. Ekranlar Firestore'a doğrudan değil, her zaman service üzerinden erişir. State `StatefulWidget` + `setState`, canlı veri `StreamBuilder` ile çizilir; harici state/DI/router paketi yoktur. `main.dart` açılışta `FirestoreManagementScreen`'i gösterir; tek seferlik okuma yapan `FirebaseHomePage` (`FutureBuilder`) örnek olarak dosyada durur. Dosya dosya ayrıntılı ders notu: [lib/SUMMARY.md](lib/SUMMARY.md).
+Kod üç katmana ayrılır: model, service ve ekran. `models/student.dart` verinin şeklini ve `fromFireStore` dönüşümünü tutar. `services/firestore_student_service.dart` Firestore işlemlerinin hepsini içerir: `addStudent`, `getStudents`, `watchStudents`, `pointUpdate`, `deleteStudent` ve `saveStudentWithId`. Ekranlar Firestore'a yalnızca bu service üzerinden erişir.
+
+State için `StatefulWidget` ve `setState` kullanılır, canlı liste `StreamBuilder` ile çizilir. Harici state, DI ya da router paketi yok. `main.dart` açılışta `FirestoreManagementScreen`'i gösterir. Veriyi bir kez okuyan `FirebaseHomePage` (`FutureBuilder`) örnek olarak dosyada duruyor. Dosyaların tek tek anlatıldığı ders notu: [lib/SUMMARY.md](lib/SUMMARY.md).
 
 ## Notlar
 
-- Test mode kuralları **30 gün** sonra tüm okuma/yazmaları reddeder; bu durumda liste "No Students Found In Cloud." veya hata gösterir. Süreyi Firestore → Rules sekmesinden uzatabilirsin. Uygulamada kimlik doğrulama olmadığı için veritabanı bu sürede herkese açıktır; gerçek kişisel veri girme.
-- `point` alanı tüm dokümanlarda aynı sayısal tipte (int64) olmalıdır; `orderBy('point')` sorgusu bu alanı olmayan dokümanları sonuçlara dahil etmez.
-- Firebase yapılandırma dosyalarındaki API anahtarları gizli değildir; güvenliği Firestore Rules sağlar. Depo herkese açıksa yine de bu dosyaları `.gitignore`'a eklemeyi düşünebilirsin. `firebase-debug.log` zaten yok sayılır.
-- Native yapılandırma değiştiğinde hot reload yetmez; `flutter clean && flutter pub get && flutter run` ile yeniden derle.
-- `lib/images/` altındaki görseller SQL–Firestore karşılaştırması ve doküman yapısı ders notlarıdır (bkz. [SUMMARY.md](lib/SUMMARY.md) bölüm 1.2 ve 1.3).
+- Test mode kuralları 30 gün sonra bütün okuma ve yazmaları reddeder. O noktada liste "No Students Found In Cloud." ya da bir hata gösterir; süreyi Firestore'un Rules sekmesinden uzatabilirsin. Uygulamada giriş olmadığı için veritabanı bu süre boyunca herkese açık, gerçek kişisel veri girme.
+- `point` alanı her dokümanda aynı tipte (int64) olmalı. `orderBy('point')` sorgusu bu alanı olmayan dokümanları sonuca almaz.
+- Firebase yapılandırma dosyalarındaki API anahtarları gizli bilgi sayılmaz, erişimi Firestore Rules belirler. Depo herkese açıksa bu dosyaları `.gitignore`'a eklemeyi yine de düşünebilirsin. `firebase-debug.log` zaten yok sayılıyor.
+- Native yapılandırma değişince hot reload yetmez. `flutter clean && flutter pub get && flutter run` ile baştan derle.
+- `lib/images/` altındaki iki görsel ders notu: biri SQL ile Firestore'u karşılaştırıyor, diğeri doküman yapısını gösteriyor ([SUMMARY.md](lib/SUMMARY.md), bölüm 1.2 ve 1.3).
