@@ -1,0 +1,3 @@
+flutter pub add image_picker
+flutter pub add firebase_storage
+flutter pub add firebase_messaging flutter_local_notifications
