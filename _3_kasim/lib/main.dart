@@ -30,18 +30,28 @@ class FirebaseApp extends StatelessWidget { // Uygulamanın Root Widget'ı Olan 
   }
 }
 
-class FirebaseHomePage extends StatelessWidget { // Öğrenci Listesini Gösteren StatelessWidget'tır.
+class FirebaseHomePage extends StatefulWidget { // Öğrenci Listesini Tek Seferlik Gösteren StatefulWidget'tır.
   const FirebaseHomePage({super.key}); // key'i Üst Class'a İleten const Constructor'dır.
+
+  @override // Üst Class'taki createState Metodunu Override Eder.
+  State<FirebaseHomePage> createState() => _FirebaseHomePageState(); // Bu Widget'ın State Nesnesini Oluşturur.
+}
+
+class _FirebaseHomePageState extends State<FirebaseHomePage> { // Sayfanın Future'ını Tutan State Class'ıdır.
+  late final Future<List<Student>> _studentsFuture = FirestoreStudentService().getStudents(); // Sorguyu Bir Kez Başlatır; Her build'de Tekrar Atılmaz.
 
   @override // Üst Class'taki build Metodunu Override Eder.
   Widget build(BuildContext context) { // Sayfanın Widget Ağacını Oluşturan build Metodudur.
     return Scaffold( // Sayfa İskeletini Sağlayan Scaffold Döndürür.
       appBar: AppBar(title: const Text('Students')), // Başlığı Students Olan AppBar Ekler.
       body: FutureBuilder<List<Student>>( // Future Sonucuna Göre UI Çizen FutureBuilder'dır.
-        future: FirestoreStudentService().getStudents(), // Firestore'dan Öğrenci Listesini Getiren Future'dır.
+        future: _studentsFuture, // State'te Bir Kez Oluşturulan Future'ı Kullanır.
         builder: (context, snapshot) { // Future'ın Durumuna Göre Widget Döndüren Builder Callback'idir.
           if (snapshot.connectionState != ConnectionState.done) { // Future Henüz Tamamlanmadıysa Bu Bloğa Girer.
             return const Center(child: CircularProgressIndicator()); // Ortada Yükleniyor Göstergesi Gösterir.
+          }
+          if (snapshot.hasError) { // Sorgu Hata Verdiyse Bu Bloğa Girer.
+            return Center(child: Text('Error: ${snapshot.error}')); // Hata Mesajını Ortada Gösterir.
           }
           final students = snapshot.data ?? []; // Gelen Veriyi Alır, null İse Boş List Kullanır.
           if (students.isEmpty) { // Liste Boşsa Bu Bloğa Girer.
@@ -53,7 +63,8 @@ class FirebaseHomePage extends StatelessWidget { // Öğrenci Listesini Göstere
               final student = students[index]; // index'teki Student Nesnesini Alır.
               return ListTile( // Öğrenci Bilgilerini Gösteren ListTile Döndürür.
                 title: Text(student.nameSurname), // Başlıkta Ad Soyadı Gösterir.
-                subtitle: Text('${student.email} - ${student.projectName}'), // Alt Satırda email ve Proje Adını Gösterir.
+                subtitle: Text('${student.email} - ${student.projectName}\n${formatStudentDates(student)}'), // Alt Satırda email, Proje Adı ve Tarihleri Gösterir.
+                isThreeLine: true, // Tarih Satırı için ListTile'ı Üç Satırlık Yapar.
                 trailing: Text('${student.point}'), // Sağ Tarafta Puanı Gösterir.
               );
             },

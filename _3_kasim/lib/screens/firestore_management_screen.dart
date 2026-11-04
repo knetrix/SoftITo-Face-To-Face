@@ -272,7 +272,8 @@ class _FirestoreManagementScreenState extends State<FirestoreManagementScreen> {
           student.nameSurname, // Öğrencinin Ad Soyadını Verir.
           style: const TextStyle(fontWeight: FontWeight.bold), // Başlığı Kalın Yapar.
         ),
-        subtitle: Text('${student.email} - Project: ${student.projectName}'), // Alt Satırda email ve Proje Adını Gösterir.
+        subtitle: Text('${student.email} - Project: ${student.projectName}\n${formatStudentDates(student)}'), // Alt Satırda email, Proje Adı ve Tarihleri Gösterir.
+        isThreeLine: true, // Tarih Satırı için ListTile'ı Üç Satırlık Yapar.
         trailing: IconButton( // Sağda Puan Düzenleme Butonudur.
           onPressed: () => _pointUpdateDialog(student), // Basınca Puan Güncelleme Dialog'unu Açar.
           icon: const Icon(Icons.edit, color: Colors.amberAccent), // amberAccent Renkli Düzenleme İkonunu Gösterir.

@@ -59,7 +59,7 @@ students (Collection)
 
 ## Mimari
 
-Kod üç katmana ayrılır: model, service ve ekran. `models/student.dart` verinin şeklini ve `fromFireStore` dönüşümünü tutar. `services/firestore_student_service.dart` Firestore işlemlerinin hepsini içerir: `addStudent`, `getStudents`, `watchStudents`, `pointUpdate`, `deleteStudent` ve `saveStudentWithId`. Ekranlar Firestore'a yalnızca bu service üzerinden erişir.
+Kod üç katmana ayrılır: model, service ve ekran. `models/student.dart` verinin şeklini ve `fromFireStore` dönüşümünü tutar. `services/firestore_student_service.dart` Firestore işlemlerinin hepsini içerir: `addStudent`, `getStudents`, `watchStudents`, `pointUpdate` ve `deleteStudent`. Ekranlar Firestore'a yalnızca bu service üzerinden erişir.
 
 State için `StatefulWidget` ve `setState` kullanılır, canlı liste `StreamBuilder` ile çizilir. Harici state, DI ya da router paketi yok. `main.dart` açılışta `FirestoreManagementScreen`'i gösterir. Veriyi bir kez okuyan `FirebaseHomePage` (`FutureBuilder`) örnek olarak dosyada duruyor. Dosyaların tek tek anlatıldığı ders notu: [lib/SUMMARY.md](lib/SUMMARY.md).
 
