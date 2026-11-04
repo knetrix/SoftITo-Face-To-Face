@@ -3,10 +3,13 @@ import 'package:flutter/material.dart'; // Material Widget'larını Kullanmak i�
 import 'package:firebase_core/firebase_core.dart'; // Firebase'i Başlatmak için firebase_core Package'ını import Eder.
 import 'models/student.dart'; // Student Model Class'ını import Eder.
 import 'services/firestore_student_service.dart'; // Firestore İşlemlerini Yapan Service Class'ını import Eder.
+import 'screens/firestore_management_screen.dart'; // Ekleme, Güncelleme ve Silme Yapan Yönetim Ekranını import Eder.
+
+import 'firebase_options.dart';
 
 void main() async { // Uygulamanın async Entry Point'idir.
   WidgetsFlutterBinding.ensureInitialized(); // runApp'ten Önce Native Kod Çağrılabilsin Diye Flutter Binding'i Hazırlar.
-  await Firebase.initializeApp(); // Firebase'i Başlatır ve Bitmesini Bekler.
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform); // Firebase'i Çalışılan Platformun Ayarlarıyla Başlatır ve Bitmesini Bekler.
   runApp(const FirebaseApp()); // FirebaseApp Widget'ını Root Olarak Çalıştırır.
 }
 
@@ -22,7 +25,7 @@ class FirebaseApp extends StatelessWidget { // Uygulamanın Root Widget'ı Olan 
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange), // deepOrange Seed Color'dan ColorScheme Üretir.
         useMaterial3: true, // Material 3 Tasarımını Açar.
       ),
-      home: const FirebaseHomePage(), // Açılışta Gösterilecek Sayfayı Belirler.
+      home: const FirestoreManagementScreen(), // Açılışta Canlı Yönetim Ekranını Gösterir.
     );
   }
 }
