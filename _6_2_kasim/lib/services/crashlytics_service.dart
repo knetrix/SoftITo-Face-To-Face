@@ -1,0 +1,18 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+
+class CrashlyticsServisi {
+  final FirebaseCrashlytics _crashlytics = FirebaseCrashlytics.instance;
+
+  Future<void> kullaniciTanit({
+    required String uid,
+    required String rol,
+  }) async {
+    await _crashlytics.setUserIdentifier(uid);
+    await _crashlytics.setCustomKey('rol', rol);
+    await _crashlytics.setCustomKey('platform', 'flutter');
+  }
+
+  void logEkle(String mesaj) {
+    _crashlytics.log(mesaj);
+  }
+}
