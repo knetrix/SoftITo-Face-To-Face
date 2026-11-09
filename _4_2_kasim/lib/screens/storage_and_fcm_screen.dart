@@ -1,6 +1,5 @@
 import 'dart:io'; // File Class'ını Kullanmak için dart:io Library'sini import Eder.
 
-import 'package:firebase_storage/firebase_storage.dart'; // TaskSnapshot için firebase_storage Package'ını import Eder.
 import 'package:flutter/material.dart'; // Material Widget'larını Kullanmak için flutter/material Library'sini import Eder.
 
 import '../models/notification_model.dart'; // NotificationModel Class'ını import Eder.
@@ -32,8 +31,6 @@ class _StorageAndFcmScreenState extends State<StorageAndFcmScreen> {
   _selectedFile; // Kullanıcının Seçtiği Yerel Dosyayı Tutan Nullable Field'dır.
   String?
   _uploadUrl; // Yüklenen Görselin Download URL'ini Tutan Nullable Field'dır.
-  double _loadingProgress =
-      0.0; // Yükleme İlerlemesini 0-1 Arasında Tutan Field'dır.
   bool _isLoading =
       false; // Yükleme İşleminin Sürüp Sürmediğini Tutan Flag'dir.
 
@@ -84,6 +81,7 @@ class _StorageAndFcmScreenState extends State<StorageAndFcmScreen> {
         .getToken(); // Service Üzerinden Cihazın FCM Token'ını Alır.
     if (!mounted) return; // Widget Ağaçtan Kaldırıldıysa Metottan Çıkar.
     setState(() => _fcmToken = token); // Token'ı State'e Yazıp UI'ı Yeniler.
+    debugPrint('FCM token: $token'); // Token'ı Test Bildirimi için Debug Konsoluna Yazdırır.
   }
 
   Future<void> _pickImage({required bool withCamera}) async {
@@ -96,7 +94,6 @@ class _StorageAndFcmScreenState extends State<StorageAndFcmScreen> {
       // Seçim Sonrası State'i Güncelleyip UI'ı Yeniler.
       _selectedFile = file; // Seçilen Dosyayı _selectedFile'a Atar.
       _uploadUrl = null; // Önceki Yükleme URL'ini Temizler.
-      _loadingProgress = 0.0; // Yükleme İlerlemesini Sıfırlar.
     });
   }
 
@@ -108,31 +105,16 @@ class _StorageAndFcmScreenState extends State<StorageAndFcmScreen> {
     setState(() {
       // Yükleme Başladığı için State'i Güncelleyip UI'ı Yeniler.
       _isLoading = true; // _isLoading'i true Yapar.
-      _loadingProgress = 0.0; // Yükleme İlerlemesini Sıfırlar.
     });
 
     try {
       // Hata Oluşabilecek Yükleme İşlemini try Bloğuna Alır.
-      final task = _storageService.uploadFile(
-        // Service Üzerinden Yüklemeyi Başlatır ve UploadTask Alır.
+      final url = await _storageService.uploadFile(
+        // Service Üzerinden Yüklemeyi Yapar ve Public URL'i Alır.
         file: file, // Yüklenecek Dosyayı Verir.
         fileName: '${DateTime.now().millisecondsSinceEpoch}.jpg', // Benzersiz Olması için Zaman Damgasını Dosya Adı Yapar.
-        path: 'uploads', // Dosyanın Storage'daki Klasörünü uploads Olarak Belirler.
+        path: 'uploads', // Dosyanın Bucket İçindeki Klasörünü uploads Olarak Belirler.
       );
-      task.snapshotEvents.listen((TaskSnapshot snapshot) {
-        // Yükleme İlerlemesini TaskSnapshot Stream'i ile Dinler.
-        if (snapshot.totalBytes == 0 || !mounted) {
-          return; // Toplam Boyut 0 İse veya Widget Kaldırıldıysa İşlem Yapmaz.
-        }
-        setState(() {
-          // İlerleme Değiştiği için UI'ı Yeniler.
-          _loadingProgress = snapshot.bytesTransferred / snapshot.totalBytes; // Aktarılan Byte'ı Toplama Bölerek İlerlemeyi Hesaplar.
-        });
-      });
-      final snapshot = await task; // Yüklemenin Tamamlanmasını Bekler ve Son TaskSnapshot'ı Alır.
-      final url = await _storageService.downloadUrl(
-        reference: snapshot.ref,
-      ); // Yüklenen Dosyanın Download URL'ini Alır.
       if (!mounted) return; // Widget Ağaçtan Kaldırıldıysa Metottan Çıkar.
       setState(() {
         // Yükleme Sonucunu State'e Yazıp UI'ı Yeniler.
@@ -249,7 +231,6 @@ class _StorageAndFcmScreenState extends State<StorageAndFcmScreen> {
               // Görsel Seçme ve Yükleme Kartını Gösterir.
               selectedFile: _selectedFile, // Seçilen Dosyayı Karta İletir.
               uploadUrl: _uploadUrl, // Download URL'ini Karta İletir.
-              loadingProgress: _loadingProgress, // Yükleme İlerlemesini Karta İletir.
               isLoading: _isLoading, // Yükleme Durumunu Karta İletir.
               onGallerySelect: () => _pickImage(withCamera: false), // Galeriden Görsel Seçer.
               onTakePhoto: () => _pickImage(withCamera: true), // Kameradan Fotoğraf Çeker.

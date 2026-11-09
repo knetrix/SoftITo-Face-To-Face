@@ -5,7 +5,6 @@ import 'package:flutter/material.dart'; // Material Widget'larını Kullanmak i�
 class ImageUploadCard extends StatelessWidget { // Görsel Seçme, Önizleme ve Yükleme Arayüzünü Gösteren StatelessWidget'tır.
   final File? selectedFile; // Kullanıcının Seçtiği Yerel Dosyayı Tutan Nullable Field'dır.
   final String? uploadUrl; // Yüklenen Görselin Download URL'ini Tutan Nullable Field'dır.
-  final double loadingProgress; // Yükleme İlerlemesini 0-1 Arasında Tutan Field'dır.
   final bool isLoading; // Yükleme İşleminin Sürüp Sürmediğini Tutan Flag'dir.
   final VoidCallback onGallerySelect; // Galeriden Seç Butonuna Basılınca Çağrılan Callback'tir.
   final VoidCallback onTakePhoto; // Fotoğraf Çek Butonuna Basılınca Çağrılan Callback'tir.
@@ -15,7 +14,6 @@ class ImageUploadCard extends StatelessWidget { // Görsel Seçme, Önizleme ve 
     super.key, // key'i Üst Class'a İletir.
     required this.selectedFile, // selectedFile Parametresini Zorunlu Yapar.
     required this.uploadUrl, // uploadUrl Parametresini Zorunlu Yapar.
-    required this.loadingProgress, // loadingProgress Parametresini Zorunlu Yapar.
     required this.isLoading, // isLoading Parametresini Zorunlu Yapar.
     required this.onGallerySelect, // onGallerySelect Parametresini Zorunlu Yapar.
     required this.onTakePhoto, // onTakePhoto Parametresini Zorunlu Yapar.
@@ -40,7 +38,7 @@ class ImageUploadCard extends StatelessWidget { // Görsel Seçme, Önizleme ve 
                 Icon(Icons.cloud_upload_outlined, color: Color(0xFF0047FF)), // Mavi Renkli Bulut Yükleme İkonunu Gösterir.
                 SizedBox(width: 8), // İkon ile Metin Arasına 8 Birim Boşluk Koyar.
                 Text( // Kart Başlığını Gösteren Text'tir.
-                  'Firebase Media Uploader', // Başlık Metnini Belirler.
+                  'Supabase Media Uploader', // Başlık Metnini Belirler.
                   style: TextStyle( // Başlığın Yazı Stilini Tanımlar.
                     fontSize: 16, // Yazı Boyutunu 16 Yapar.
                     fontWeight: FontWeight.bold, // Yazıyı Kalın Yapar.
@@ -97,7 +95,7 @@ class ImageUploadCard extends StatelessWidget { // Görsel Seçme, Önizleme ve 
             if (isLoading) ...[ // Yükleme Sürüyorsa Aşağıdaki Widget'ları List'e Spread Eder.
               const SizedBox(height: 12), // Önizleme ile Progress Bar Arasına 12 Birim Boşluk Koyar.
               LinearProgressIndicator( // Yükleme İlerlemesini Yatay Çubukla Gösterir.
-                value: loadingProgress, // Çubuğun Doluluk Oranını loadingProgress'e Bağlar.
+                // value Verilmediği için Çubuk Belirsiz (Indeterminate) Modda Animasyon Yapar.
                 color: const Color.fromARGB(255, 8, 69, 3), // Çubuğun Dolu Kısmının Rengini Belirler.
                 backgroundColor: Colors.grey.shade200, // Çubuğun Boş Kısmının Rengini Açık Gri Yapar.
                 minHeight: 6, // Çubuğun Minimum Yüksekliğini 6 Yapar.
@@ -105,7 +103,7 @@ class ImageUploadCard extends StatelessWidget { // Görsel Seçme, Önizleme ve 
               ),
               const SizedBox(height: 4), // Progress Bar ile Yüzde Metni Arasına 4 Birim Boşluk Koyar.
               Text( // Yükleme Yüzdesini Gösteren Text'tir.
-                'Uploading... ${(loadingProgress * 100).toStringAsFixed(0)}%', // İlerlemeyi Yüzdeye Çevirip Ondalıksız Gösterir.
+                'Uploading...', // Yükleme Sürerken Sabit Bir Metin Gösterir.
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), // Metni 12 Boyutunda ve Kalın Yapar.
               ),
             ],

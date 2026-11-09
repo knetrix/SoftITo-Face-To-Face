@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "204995756128",
+    "project_id": "soft-4-2-kasim",
+    "storage_bucket": "soft-4-2-kasim.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:204995756128:android:60c9f48f5b2881acc30305",
+        "android_client_info": {
+          "package_name": "com.example.u_4_2_kasim"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxFP6YIs47mih0-tuL5mksp06FOeUoZ1Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
